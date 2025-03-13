@@ -37,9 +37,9 @@ config = {
     'channels': [6, 64, 128, 256, 512, 1024],
     'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
-    'dataset_path': '../DrivAerNet_FEN_Processed_Point_Clouds_100k',  # Update this with your dataset path
+    'dataset_path': '../3DMeshesSTL',  # Update this with your dataset path
     'aero_coeff': '../DrivAerNetPlusPlus_Cd_8k_Updated.csv',
-    'subset_dir': '../subset_dir'
+    'subset_dir': '../train_val_test_splits'
 
 }
 
@@ -106,7 +106,7 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
     # Initialize the full dataset
-    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, pointcloud_exist=True)
+    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, pointcloud_exist=False)
 
     # Helper function to create subsets from IDs in text files
     def create_subset(dataset, ids_file):

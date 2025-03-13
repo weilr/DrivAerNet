@@ -33,9 +33,9 @@ config = {
     'epochs': 100,
     'lr': 0.001,
     'optimizer': 'adam',
-    'dataset_path': '../DrivAerNet_FEN_STLs',  # Update this with your dataset path
+    'dataset_path': '../3DMeshesSTL',  # Update this with your dataset path
     'aero_coeff': '../DrivAerNetPlusPlus_Cd_8k_Updated.csv',
-    'subset_dir': '../subset_dir'
+    'subset_dir': '../train_val_test_splits'
 }
 
 # Set the device for training

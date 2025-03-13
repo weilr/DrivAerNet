@@ -46,9 +46,9 @@ config = {
     #'channels': [6, 64, 128, 256, 512, 1024],
     #'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
-    'dataset_path': '../DrivAerNet_STLs_Combined',  # Update this with your dataset path
-    'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected.csv',
-    'subset_dir': '../subset_dir'
+    'dataset_path': '../../3DMeshesSTL',  # Update this with your dataset path
+    'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
+    'subset_dir': '../../train_val_test_splits'
 }
 
 # Set the device for training
@@ -132,9 +132,9 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     test_dataset = create_subset(full_dataset, 'test_design_ids.txt')
 
     # Initialize DataLoaders for each subset
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=64)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=64)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=64)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=1)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=1)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=1)
 
     return train_dataloader, val_dataloader, test_dataloader
 
