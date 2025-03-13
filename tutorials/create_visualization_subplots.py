@@ -61,7 +61,7 @@ def create_visualization_subplots(mesh, pressure_name='p', n_points=100000):
     plotter.show()
 
 # Load your mesh data here, ensure it has the pressure data in point_data
-mesh = pv.read('../SurfacePressureVTK/DrivAer_F_D_WM_WW_3000.vtk')
+mesh = pv.read('Z:/DrivAerNet++/PressureVTK/E_S_WW_WM_001.vtk')
 
 # Visualize the mesh, mesh with pressure, and point cloud with pressure
 create_visualization_subplots(mesh, pressure_name='p', n_points=100000)

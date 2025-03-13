@@ -24,7 +24,7 @@ def move_stl_files_to_base(base_dir):
     cnt=1
     for root, dirs, files in os.walk(base_dir, topdown=False):  # topdown=False 先遍历子文件夹
         for file in files:
-            if file.endswith('.vtk'):  # 只处理 .stl 文件
+            if file.endswith('.stl'):  # 只处理 .stl 文件
                 file_path = os.path.join(root, file)
                 # 目标路径为 base_dir 目录
                 target_path = os.path.join(base_dir, file)
@@ -48,5 +48,5 @@ def move_stl_files_to_base(base_dir):
         #         print(f"Failed to remove non-empty directory: {dir_path}")
 
 if __name__ == '__main__':
-    base_dir = ''  # 请修改为你的目标文件夹路径
+    base_dir = ""  # 请修改为你的目标文件夹路径
     move_stl_files_to_base(base_dir)
