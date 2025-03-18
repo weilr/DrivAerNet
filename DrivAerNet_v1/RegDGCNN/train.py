@@ -37,28 +37,30 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 32,
+    'batch_size': 2,
     'epochs': 100,
     'dropout': 0.4,
-    'emb_dims': 512,
+    'emb_dims': 64,
     'k': 40,
     'optimizer': 'adam',
-    #'channels': [6, 64, 128, 256, 512, 1024],
-    #'linear_sizes': [128, 64, 32, 16],
+    # 'channels': [6, 64, 128, 256, 512, 1024],
+    # 'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
     'dataset_path': '../../3DMeshesSTL',  # Update this with your dataset path
     'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
-    'subset_dir': '../../train_val_test_splits'
+    'subset_dir': '../../train_test_splits'
 }
 
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
+
 
 def setup_seed(seed: int):
     """Set the seed for reproducibility."""
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
+
 
 def r2_score(output, target):
     """Compute R-squared score."""
@@ -186,8 +188,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Calculate and print the average training loss for the epoch
         avg_loss = total_loss / len(train_dataloader)
         train_losses.append(avg_loss)
-        print(f"Epoch {epoch+1} Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
-
+        print(f"Epoch {epoch + 1} Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
 
         # Validation phase
         model.eval()  # Set the model to evaluation mode
@@ -212,17 +213,16 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
                 all_preds.append(outputs.squeeze().cpu().numpy())
                 all_targets.append(targets.cpu().numpy())
 
-
         # Calculate and print the average validation loss for the epoch
         avg_val_loss = val_loss / len(val_dataloader)
         val_losses.append(avg_val_loss)
         avg_inference_time = sum(inference_times) / len(inference_times)
-        print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
+        print(f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
 
         # Concatenate all predictions and targets
-        all_preds = np.concatenate(all_preds)
-        all_targets = np.concatenate(all_targets)
-        
+        all_preds = torch.from_numpy(np.concatenate(all_preds))
+        all_targets = torch.from_numpy(np.concatenate(all_targets))
+
         # Compute R² for the entire validation dataset
         val_r2 = r2_score(all_preds, all_targets)
         print(f"Validation R²: {val_r2:.4f}")
@@ -233,11 +233,10 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
             best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
             os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
             torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved with MSE: {best_mse:.6f} and R²: {avg_val_r2:.4f}")
+            print(f"New best model saved with MSE: {best_mse:.6f} and R²: {val_r2:.4f}")
 
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
-
 
     training_duration = time.time() - training_start_time
     print(f"Total training time: {training_duration:.2f}s")
@@ -248,6 +247,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     # Save losses for plotting
     np.save(os.path.join('models', f'{config["exp_name"]}_train_losses.npy'), np.array(train_losses))
     np.save(os.path.join('models', f'{config["exp_name"]}_val_losses.npy'), np.array(val_losses))
+
 
 def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict):
     """
@@ -267,7 +267,6 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
     all_preds = []
     all_targets = []
 
-
     # Disable gradient calculation
     with torch.no_grad():
         for data, targets in test_dataloader:
@@ -281,8 +280,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
             inference_time = end_time - start_time
             total_inference_time += inference_time  # Accumulate total inference time
 
-            mse = F.mse_loss(outputs.squeeze(), targets) #Mean Squared Error (MSE)
-            mae = F.l1_loss(outputs.squeeze(), targets) #Mean Absolute Error (MAE),
+            mse = F.mse_loss(outputs.squeeze(), targets)  # Mean Squared Error (MSE)
+            mae = F.l1_loss(outputs.squeeze(), targets)  # Mean Absolute Error (MAE),
             # Collect predictions and targets for R² calculation
             all_preds.append(outputs.squeeze().cpu().numpy())
             all_targets.append(targets.cpu().numpy())
@@ -292,11 +291,10 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
             max_mae = max(max_mae, mae.item())
             total_samples += targets.size(0)  # Increment total sample count
 
-
     # Concatenate all predictions and targets
     all_preds = np.concatenate(all_preds)
     all_targets = np.concatenate(all_targets)
-    
+
     # Compute R² for the entire test dataset
     test_r2 = r2_score(all_preds, all_targets)
 
@@ -317,12 +315,13 @@ def load_and_test_model(model_path, test_dataloader, device):
 
     test_model(model, test_dataloader, config)
 
+
 if __name__ == "__main__":
     setup_seed(config['seed'])
     model = initialize_model(config).to(device)
-    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'],config['aero_coeff'],
-                                                          config['subset_dir'], config['num_points'],
-                                                          config['batch_size'])
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
+                                                                        config['subset_dir'], config['num_points'],
+                                                                        config['batch_size'])
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 
     # Load and test both the best and final models

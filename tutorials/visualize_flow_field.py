@@ -44,7 +44,7 @@ def visualize_flow_field(vtk_file_path, scalar_field='U'):
     return plotter
 
 # Example usage:
-vtk_file_path = 'Z:/CFD/N_S_WWS_WM_part1/N_S_WWS_WM_001.vtk'
+vtk_file_path = 'Z:/DrivAerNet/DrivAerNet++/CFDVTK/N_S_WWS_WM_001.vtk'
 scalar_field = 'U'  # or 'p' for pressure
 plotter = visualize_flow_field(vtk_file_path, scalar_field)
 plotter.show()
