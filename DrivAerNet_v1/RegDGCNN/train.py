@@ -172,7 +172,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         total_loss = 0
 
         # Iterate over the training data
-        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
+        time.sleep(0.1)
+        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",leave=False):
             data, targets = data.to(device), targets.to(device).squeeze()  # Move data to the gpu
             data = data.permute(0, 2, 1)  # Permute dimensions
 
@@ -200,7 +201,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # No gradient computation needed during validation
         with torch.no_grad():
             # Iterate over the validation data
-            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]"):
+            time.sleep(0.1)
+            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",leave=False):
                 inference_start_time = time.time()
                 data, targets = data.to(device), targets.to(device).squeeze()
                 data = data.permute(0, 2, 1)
@@ -310,7 +312,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
 def load_and_test_model(model_path, test_dataloader, device):
     """Load a saved model and test it."""
     model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
-    model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+    if config['cuda'] and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model.load_state_dict(torch.load(model_path))  # Load the saved weights
 
     test_model(model, test_dataloader, config)
