@@ -20,4 +20,5 @@ db.sqlite3
 
 3DMeshesSTL/
 AnnotationsSTL/
+DrivAerNet_v1/RegDGCNN/models/
 .idea

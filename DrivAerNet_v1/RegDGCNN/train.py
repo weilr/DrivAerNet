@@ -16,6 +16,7 @@ The model architecture incorporates several techniques, including dynamic graph 
 EdgeConv operations, and global feature aggregation, to robustly learn from graph and point cloud data.
 
 """
+import datetime
 import os
 import torch
 import numpy as np
@@ -30,9 +31,16 @@ from model import RegDGCNN
 from DrivAerNetDataset import DrivAerNetDataset
 import pandas as pd
 
+
+def gen_model_name(config: dict) -> str:
+    return "{}_{}_{}epochs_{}_{}dropout".format(config['exp_name'],
+                                                   datetime.datetime.now().strftime('%Y%m%d_%H%M%S'), config['epochs'],
+                                                   config['num_points'], config['dropout'])
+
+
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet_r2_100epochs_5k',
+    'exp_name': 'CdPrediction_DrivAerNet',
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
@@ -50,6 +58,8 @@ config = {
     'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
     'subset_dir': '../../train_test_splits'
 }
+config['exp_name'] = gen_model_name(config)
+print("Initializing {}".format(config['exp_name']))
 
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
@@ -173,7 +183,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
 
         # Iterate over the training data
         time.sleep(0.1)
-        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",leave=False):
+        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",
+                                  leave=False):
             data, targets = data.to(device), targets.to(device).squeeze()  # Move data to the gpu
             data = data.permute(0, 2, 1)  # Permute dimensions
 
@@ -202,7 +213,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         with torch.no_grad():
             # Iterate over the validation data
             time.sleep(0.1)
-            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",leave=False):
+            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",
+                                      leave=False):
                 inference_start_time = time.time()
                 data, targets = data.to(device), targets.to(device).squeeze()
                 data = data.permute(0, 2, 1)
