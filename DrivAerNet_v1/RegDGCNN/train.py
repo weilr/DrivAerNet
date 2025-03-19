@@ -18,24 +18,25 @@ EdgeConv operations, and global feature aggregation, to robustly learn from grap
 """
 import datetime
 import os
-import torch
-import numpy as np
 import time
-from torch.utils.data import DataLoader, random_split, Subset
+
+import numpy as np
+import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torch.nn.functional as F
-from torchvision import transforms
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-from model import RegDGCNN
+
 from DrivAerNetDataset import DrivAerNetDataset
-import pandas as pd
+from model import RegDGCNN
 
 
 def gen_model_name(config: dict) -> str:
-    return "{}_{}_{}epochs_{}_{}dropout".format(config['exp_name'],
-                                                   datetime.datetime.now().strftime('%Y%m%d_%H%M%S'), config['epochs'],
-                                                   config['num_points'], config['dropout'])
+    return "{}_{}_{}epochs_{}numPoint_{}dropout".format(config['exp_name'],
+                                                        datetime.datetime.now().strftime('%Y%m%d_%H%M%S'),
+                                                        config['epochs'],
+                                                        config['num_points'], config['dropout'])
 
 
 # Configuration dictionary to hold hyperparameters and settings
@@ -59,7 +60,6 @@ config = {
     'subset_dir': '../../train_test_splits'
 }
 config['exp_name'] = gen_model_name(config)
-print("Initializing {}".format(config['exp_name']))
 
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
@@ -306,8 +306,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
             total_samples += targets.size(0)  # Increment total sample count
 
     # Concatenate all predictions and targets
-    all_preds = np.concatenate(all_preds)
-    all_targets = np.concatenate(all_targets)
+    all_preds = torch.from_numpy(np.concatenate(all_preds))
+    all_targets = torch.from_numpy(np.concatenate(all_targets))
 
     # Compute R² for the entire test dataset
     test_r2 = r2_score(all_preds, all_targets)

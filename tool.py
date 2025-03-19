@@ -57,29 +57,51 @@ import os.path
     分割自己的数据集
 """
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
+# import pandas as pd
+# from sklearn.model_selection import train_test_split
+#
+# # 读取CSV文件
+# outpath = './train_test_splits'
+# file_path = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
+# df = pd.read_csv(file_path)
+#
+# # 为了训练，去掉一部分数据
+# df, _ = train_test_split(df, test_size=0.99, random_state=42)
+#
+# # 划分训练集、测试集、验证集
+# train_data, temp_data = train_test_split(df, test_size=0.4, random_state=42)
+# val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+#
+# if not os.path.exists(outpath):
+#     os.makedirs(outpath)
+# # 将Design列保存为txt文件
+# train_data[['Design']].to_csv(os.path.join(outpath, 'train_design_ids.txt'), header=False, index=False, sep='\t')
+# val_data[['Design']].to_csv(os.path.join(outpath, 'val_design_ids.txt'), header=False, index=False, sep='\t')
+# test_data[['Design']].to_csv(os.path.join(outpath, 'test_design_ids.txt'), header=False, index=False, sep='\t')
+#
+# # 输出分割后文件的信息
+# print(f"训练集: {train_data.shape[0]}条数据")
+# print(f"验证集: {val_data.shape[0]}条数据")
+# print(f"测试集: {test_data.shape[0]}条数据")
 
-# 读取CSV文件
-outpath = './train_test_splits'
-file_path = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
-df = pd.read_csv(file_path)
 
-# 为了训练，去掉一部分数据
-df, _ = train_test_split(df, test_size=0.99, random_state=42)
+"""
+    绘制train_loss和test_loss曲线
+"""
+import numpy as np
+import matplotlib.pyplot as plt
 
-# 划分训练集、测试集、验证集
-train_data, temp_data = train_test_split(df, test_size=0.4, random_state=42)
-val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+# 读取 .npy 文件
+train_loss = np.load('DrivAerNet_v1/RegDGCNN/models/CdPrediction_DrivAerNet_20250319_000814_100epochs_5000numPoint_0.4dropout_train_losses.npy')
+test_loss = np.load('DrivAerNet_v1/RegDGCNN/models/CdPrediction_DrivAerNet_20250319_000814_100epochs_5000numPoint_0.4dropout_val_losses.npy')
 
-if not os.path.exists(outpath):
-    os.makedirs(outpath)
-# 将Design列保存为txt文件
-train_data[['Design']].to_csv(os.path.join(outpath, 'train_design_ids.txt'), header=False, index=False, sep='\t')
-val_data[['Design']].to_csv(os.path.join(outpath, 'val_design_ids.txt'), header=False, index=False, sep='\t')
-test_data[['Design']].to_csv(os.path.join(outpath, 'test_design_ids.txt'), header=False, index=False, sep='\t')
-
-# 输出分割后文件的信息
-print(f"训练集: {train_data.shape[0]}条数据")
-print(f"验证集: {val_data.shape[0]}条数据")
-print(f"测试集: {test_data.shape[0]}条数据")
+# 绘制损失曲线
+plt.figure(figsize=(10, 5))
+plt.plot(train_loss, label='Train Loss', linestyle='-', marker='o')
+plt.plot(test_loss, label='Test Loss', linestyle='-', marker='s')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Train and Test Loss Curve')
+plt.legend()
+plt.grid(True)
+plt.show()
