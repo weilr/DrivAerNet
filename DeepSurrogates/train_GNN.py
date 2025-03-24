@@ -29,13 +29,13 @@ config = {
     'cuda': True,
     'exp_name': 'DragPrediction_DrivAerNet_DragGNN_100epochs_NeurIPS',
     'seed': 1,
-    'batch_size':1,
+    'batch_size':2,
     'epochs': 100,
     'lr': 0.001,
     'optimizer': 'adam',
     'dataset_path': '../3DMeshesSTL',  # Update this with your dataset path
     'aero_coeff': '../DrivAerNetPlusPlus_Cd_8k_Updated.csv',
-    'subset_dir': '../train_val_test_splits'
+    'subset_dir': '../train_test_splits'
 }
 
 # Set the device for training
@@ -141,7 +141,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         total_loss = 0
 
         # Iterate over the training data
-        for data in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
+        time.sleep(0.1)
+        for data in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",leave=False):
             data = data.to(device)  # Move data to the gpu
 
             optimizer.zero_grad()
@@ -169,7 +170,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # No gradient computation needed during validation
         with torch.no_grad():
             # Iterate over the validation data
-            for data in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]"):
+            time.sleep(0.1)
+            for data in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",leave=False):
                 inference_start_time = time.time()
                 data = data.to(device)
                 outputs = model(data)
@@ -190,9 +192,9 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
 
         # Concatenate predictions and targets
-        all_preds = np.concatenate(all_preds)
-        all_targets = np.concatenate(all_targets)
-        
+        all_preds = torch.from_numpy(np.concatenate(all_preds))
+        all_targets = torch.from_numpy(np.concatenate(all_targets))
+
         # Compute R² for the entire validation dataset
         val_r2 = r2_score(all_preds, all_targets)
         print(f"Validation R²: {val_r2:.4f}")
@@ -262,9 +264,9 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
 
     
     # Concatenate predictions and targets
-    all_preds = np.concatenate(all_preds)
-    all_targets = np.concatenate(all_targets)
-    
+    all_preds = torch.from_numpy(np.concatenate(all_preds))
+    all_targets = torch.from_numpy(np.concatenate(all_targets))
+
     # Compute R² for the entire test dataset
     test_r2 = r2_score(all_preds, all_targets)
     # Compute average metrics over the entire test set

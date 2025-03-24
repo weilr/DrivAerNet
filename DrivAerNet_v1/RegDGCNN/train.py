@@ -26,6 +26,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from DrivAerNetDataset import DrivAerNetDataset
@@ -59,10 +60,24 @@ config = {
     'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
     'subset_dir': '../../train_test_splits'
 }
-config['exp_name'] = gen_model_name(config)
+
+writer = None
+final_model_path = None
 
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
+
+
+def init():
+    global writer, final_model_path
+    if final_model_path is None:
+        config['exp_name'] = gen_model_name(config)
+        final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
+    if writer is None:
+        logdir = os.path.join('runs', f'{config["exp_name"]}')
+        print(f"[Main Process] Initializing SummaryWriter at {logdir}")
+        writer = SummaryWriter(logdir)  # tensorboard --logdir runs
+
 
 
 def setup_seed(seed: int):
@@ -144,9 +159,9 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     test_dataset = create_subset(full_dataset, 'test_design_ids.txt')
 
     # Initialize DataLoaders for each subset
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=1)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=1)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=1)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=4)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=4)
 
     return train_dataloader, val_dataloader, test_dataloader
 
@@ -231,7 +246,6 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         avg_val_loss = val_loss / len(val_dataloader)
         val_losses.append(avg_val_loss)
         avg_inference_time = sum(inference_times) / len(inference_times)
-        print(f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
 
         # Concatenate all predictions and targets
         all_preds = torch.from_numpy(np.concatenate(all_preds))
@@ -239,7 +253,12 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
 
         # Compute R² for the entire validation dataset
         val_r2 = r2_score(all_preds, all_targets)
-        print(f"Validation R²: {val_r2:.4f}")
+        # print(f"Validation R²: {val_r2:.4f}")
+        print(
+            f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s, Validation R²: {val_r2:.4f}")
+
+        writer.add_scalars("Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
+        writer.add_scalar("R²_test",  val_r2, epoch + 1)
 
         # Check if this is the best model based on MSE
         if avg_val_loss < best_mse:
@@ -332,6 +351,7 @@ def load_and_test_model(model_path, test_dataloader, device):
 
 
 if __name__ == "__main__":
+    init()
     setup_seed(config['seed'])
     model = initialize_model(config).to(device)
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
@@ -339,11 +359,15 @@ if __name__ == "__main__":
                                                                         config['batch_size'])
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 
+    # prefix = 'CdPrediction_DrivAerNet_20250319_103302_100epochs_5000numPoint_0.4dropout'
+    # prefix = 'CdPrediction_DrivAerNet_20250319_000814_100epochs_5000numPoint_0.4dropout'
+    # final_model_path = os.path.join('models', f'{prefix}_final_model.pth')
     # Load and test both the best and final models
     final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
     print("Testing the final model:")
     load_and_test_model(final_model_path, test_dataloader, device)
 
+    # best_model_path = os.path.join('models', f'{prefix}_best_model.pth')
     best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
     print("Testing the best model:")
     load_and_test_model(best_model_path, test_dataloader, device)
