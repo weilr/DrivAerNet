@@ -47,16 +47,16 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 2,
+    'batch_size': 32,
     'epochs': 100,
     'dropout': 0.4,
-    'emb_dims': 64,
+    'emb_dims': 512,
     'k': 40,
     'optimizer': 'adam',
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
-    'dataset_path': '../../3DMeshesSTL',  # Update this with your dataset path
+    'dataset_path': '../../TestData',  # Update this with your dataset path
     'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
     'subset_dir': '../../train_test_splits'
 }
