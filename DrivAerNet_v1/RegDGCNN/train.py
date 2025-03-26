@@ -118,7 +118,8 @@ def initialize_model(config: dict) -> torch.nn.Module:
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
     if config['cuda'] and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        device_cnt = torch.cuda.device_count()
+        model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
 
     # Return the initialized model
     return model
@@ -344,7 +345,8 @@ def load_and_test_model(model_path, test_dataloader, device):
     """Load a saved model and test it."""
     model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
     if config['cuda'] and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        device_cnt = torch.cuda.device_count()
+        model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
     model.load_state_dict(torch.load(model_path))  # Load the saved weights
 
     test_model(model, test_dataloader, config)

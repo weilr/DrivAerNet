@@ -107,34 +107,34 @@ import os.path
 # plt.show()
 
 
-"""
-    移动文件
-"""
-
-import os
-import shutil
-
-# 读取txt文件
-txt_file = 'train_test_splits/val_design_ids.txt'  # 替换为你的txt文件路径
-source_folder = 'D:/Environment/PyCharmProject/DrivAerNet/3DMeshesSTL'  # 替换为源文件夹路径
-destination_folder = 'D:/Environment/PyCharmProject/TestData'  # 替换为目标文件夹路径
-
-# 检查目标文件夹是否存在，如果不存在则创建
-if not os.path.exists(destination_folder):
-    os.makedirs(destination_folder)
-
-# 打开txt文件并逐行读取文件名
-with open(txt_file, 'r', encoding='utf-8') as f:
-    for line in f:
-        # 去除行末的换行符
-        file_name = line.strip()+ ".stl"
-        source_file = os.path.join(source_folder, file_name )
-        destination_file = os.path.join(destination_folder, file_name )
-
-        # 检查源文件是否存在
-        if os.path.exists(source_file):
-            # 复制文件
-            shutil.copy(source_file, destination_file)
-            print(f"文件 {file_name} 复制成功！")
-        else:
-            print(f"文件 {file_name} 不存在！")
+# """
+#     移动文件
+# """
+#
+# import os
+# import shutil
+#
+# # 读取txt文件
+# txt_file = 'train_test_splits/val_design_ids.txt'  # 替换为你的txt文件路径
+# source_folder = 'D:/Environment/PyCharmProject/DrivAerNet/3DMeshesSTL'  # 替换为源文件夹路径
+# destination_folder = 'D:/Environment/PyCharmProject/TestData'  # 替换为目标文件夹路径
+#
+# # 检查目标文件夹是否存在，如果不存在则创建
+# if not os.path.exists(destination_folder):
+#     os.makedirs(destination_folder)
+#
+# # 打开txt文件并逐行读取文件名
+# with open(txt_file, 'r', encoding='utf-8') as f:
+#     for line in f:
+#         # 去除行末的换行符
+#         file_name = line.strip()+ ".stl"
+#         source_file = os.path.join(source_folder, file_name )
+#         destination_file = os.path.join(destination_folder, file_name )
+#
+#         # 检查源文件是否存在
+#         if os.path.exists(source_file):
+#             # 复制文件
+#             # shutil.copy(source_file, destination_file)
+#             print(f"文件 {file_name} 复制成功！")
+#         else:
+#             print(f"文件 {file_name} 不存在！")
