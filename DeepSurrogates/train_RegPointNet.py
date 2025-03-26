@@ -8,6 +8,7 @@ This module is part of the research presented in the paper:
 "DrivAerNet++: A Large-Scale Multimodal Car Dataset with Computational Fluid Dynamics Simulations and Deep Learning Benchmarks".
 
 """
+import datetime
 import os
 import torch
 import numpy as np
@@ -16,19 +17,21 @@ from torch.utils.data import DataLoader, random_split, Subset
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from tqdm import tqdm
 from DeepSurrogate_models import RegPointNet
 import pandas as pd
 from DrivAerNetDataset import DrivAerNetDataset
+
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'DragPrediction_DrivAerNet_PointNet_r2_batchsize32_200epochs_100kpoints_tsne_NeurIPS',
+    'exp_name': 'DragPrediction_DrivAerNet_PointNet_r2',
     'cuda': True,
     'seed': 1,
     'num_points': 100000,
     'lr': 0.001,
-    'batch_size':32,
+    'batch_size': 2,
     'epochs': 30,
     'dropout': 0.0,
     'emb_dims': 1024,
@@ -39,18 +42,38 @@ config = {
     'output_channels': 1,
     'dataset_path': '../3DMeshesSTL',  # Update this with your dataset path
     'aero_coeff': '../DrivAerNetPlusPlus_Cd_8k_Updated.csv',
-    'subset_dir': '../train_val_test_splits'
+    'subset_dir': '../train_test_splits'
 
 }
 
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
+writer = None
+
+def init():
+    global writer
+    if writer is None:
+        config['exp_name'] = gen_model_name(config)
+        logdir = os.path.join('../runs', f'{config["exp_name"]}')
+        print(f"[Main Process] Initializing SummaryWriter at {logdir}")
+        writer = SummaryWriter(logdir)  # tensorboard --logdir runs
+
+
+def gen_model_name(config: dict) -> str:
+    return "{}_{}_{}batchsize_{}epochs_{}numoints_{}dropout".format(config['exp_name'],
+                                                                    datetime.datetime.now().strftime('%Y%m%d_%H%M%S'),
+                                                                    config['batch_size'],
+                                                                    config['epochs'], config['num_points'],
+                                                                    config['dropout'])
+
+
 def setup_seed(seed: int):
     """Set the seed for reproducibility."""
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
+
 
 def r2_score(output, target):
     """Compute R-squared score."""
@@ -79,7 +102,7 @@ def initialize_model(config: dict) -> torch.nn.Module:
 
     # Instantiate the RegPointNet model with the specified configuration parameters
     model = RegPointNet(args=config).to(device)
-    #model = PointTransformer().to(device)
+    # model = PointTransformer().to(device)
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
     if config['cuda'] and torch.cuda.device_count() > 1:
@@ -106,7 +129,8 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
     # Initialize the full dataset
-    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, pointcloud_exist=False)
+    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points,
+                                     pointcloud_exist=False)
 
     # Helper function to create subsets from IDs in text files
     def create_subset(dataset, ids_file):
@@ -180,7 +204,9 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         total_loss, total_r2 = 0, 0
 
         # Iterate over batches of data
-        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
+        time.sleep(0.1)
+        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",
+                                  leave=False):
             data, targets = data.to(device), targets.to(device).squeeze()
             data = data.permute(0, 2, 1)  # Adjust data dimensions if necessary
 
@@ -210,9 +236,11 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         inference_times = []
         all_preds = []
         all_targets = []
-        
+
         with torch.no_grad():
-            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]"):
+            time.sleep(0.1)
+            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",
+                                      leave=False):
                 inference_start_time = time.time()
                 data, targets = data.to(device), targets.to(device).squeeze()
                 data = data.permute(0, 2, 1)
@@ -222,17 +250,17 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
                 val_loss += loss.item()
                 all_preds.append(outputs.squeeze().cpu().numpy())
                 all_targets.append(targets.cpu().numpy())
-                
+
                 inference_duration = time.time() - inference_start_time
                 inference_times.append(inference_duration)
 
         # Concatenate all predictions and targets
-        all_preds = np.concatenate(all_preds)
-        all_targets = np.concatenate(all_targets)
-        
+        all_preds = torch.from_numpy(np.concatenate(all_preds))
+        all_targets = torch.from_numpy(np.concatenate(all_targets))
+
         # Compute R² for the entire validation dataset
         val_r2 = r2_score(all_targets, all_preds)
-        
+
         avg_val_loss = val_loss / len(val_dataloader)
         val_losses.append(avg_val_loss)
         avg_inference_time = sum(inference_times) / len(inference_times)
@@ -241,6 +269,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         print(f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
         print(f"Validation R²: {val_r2:.4f}")
 
+        writer.add_scalars("RegPointNet_Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
+        writer.add_scalar("RegPointNet_R²", val_r2, epoch + 1)
         # Update the best model if the current model outperforms previous models
         if avg_val_loss < best_mse:
             best_mse = avg_val_loss
@@ -294,14 +324,14 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
             end_time = time.time()  # End time for inference
             inference_time = end_time - start_time
             total_inference_time += inference_time  # Accumulate total inference time
-            
-            mse = F.mse_loss(outputs.squeeze(), targets) #Mean Squared Error (MSE)
-            mae = F.l1_loss(outputs.squeeze(), targets) #Mean Absolute Error (MAE),
+
+            mse = F.mse_loss(outputs.squeeze(), targets)  # Mean Squared Error (MSE)
+            mae = F.l1_loss(outputs.squeeze(), targets)  # Mean Absolute Error (MAE),
 
             # Collect predictions and targets for R² calculation
             all_preds.append(outputs.squeeze().cpu().numpy())
             all_targets.append(targets.cpu().numpy())
-            
+
             # Accumulate metrics to compute averages later
             total_mse += mse.item()
             total_mae += mae.item()
@@ -312,8 +342,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
     avg_mse = total_mse / len(test_dataloader)
     avg_mae = total_mae / len(test_dataloader)
     # Concatenate all predictions and targets
-    all_preds = np.concatenate(all_preds)
-    all_targets = np.concatenate(all_targets)
+    all_preds = torch.from_numpy(np.concatenate(all_preds))
+    all_targets = torch.from_numpy(np.concatenate(all_targets))
     test_r2 = r2_score(all_targets, all_preds)
 
     # Output test results
@@ -325,13 +355,16 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
 def load_and_test_model(model_path, test_dataloader, device):
     """Load a saved model and test it, returning the test results."""
     model = RegPointNet(args=config).to(device)
-    model = torch.nn.DataParallel(model, device_ids=[0, 2, 3])
+    if config['cuda'] and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=[0, 2, 3])
     model.load_state_dict(torch.load(model_path))
 
     return test_model(model, test_dataloader, config)
 
 
 from sklearn.manifold import TSNE
+
+
 def save_features_incrementally(features, filename):
     """ Save features incrementally to avoid large memory overhead. """
     with open(filename, 'ab') as f:
@@ -356,17 +389,17 @@ def extract_features_and_outputs(model_path, dataloader, device, config):
             data, targets = data.to(device), targets.to(device).squeeze()
             data = data.permute(0, 2, 1)
             output, features = model(data)
-            #save_features_incrementally(features.cpu().numpy(), tsne_save_path)
+            # save_features_incrementally(features.cpu().numpy(), tsne_save_path)
 
             features_list.append(features.cpu().numpy())
-            #outputs_list.append(output.cpu().numpy())
+            # outputs_list.append(output.cpu().numpy())
             # Progress update
             if i % 10 == 0:  # Adjust the frequency of messages according to your needs
                 print(f"Processed {i + 1}/{total_batches} batches.")
     print("Saving Results")
     # Concatenate all batches to form a single array for features and outputs
     features_array = np.concatenate(features_list, axis=0)
-    #outputs_array = np.concatenate(outputs_list, axis=0)
+    # outputs_array = np.concatenate(outputs_list, axis=0)
 
     # Apply t-SNE to the concatenated feature array
     print("Applying t-SNE...")
@@ -379,10 +412,11 @@ def extract_features_and_outputs(model_path, dataloader, device, config):
     np.save(tsne_save_path, tsne_results)
     print("t-SNE results saved to {tsne_save_path}")
 
-    #return tsne_results
+    # return tsne_results
 
 
 if __name__ == "__main__":
+    init()
     setup_seed(config['seed'])
 
     # List of fractions of the training data to use
@@ -408,12 +442,12 @@ if __name__ == "__main__":
         final_results = load_and_test_model(final_model_path, test_dataloader, device)
 
         # Store results
-        #results[f"{int(frac * 100)}%_best"] = best_results
-        #results[f"{int(frac * 100)}%_final"] = final_results
-        #best_model_path= '../DragPrediction_DrivAerNet_PointNet_r2_batchsize32_200epochs_100kpoints_tsne_NeurIPS_best_model.pth'
-        #outputs, features = extract_features_and_outputs(best_model_path, train_dataloader, device, config)
+        # results[f"{int(frac * 100)}%_best"] = best_results
+        # results[f"{int(frac * 100)}%_final"] = final_results
+        # best_model_path= '../DragPrediction_DrivAerNet_PointNet_r2_batchsize32_200epochs_100kpoints_tsne_NeurIPS_best_model.pth'
+        # outputs, features = extract_features_and_outputs(best_model_path, train_dataloader, device, config)
 
     # Save the results to a CSV file
-    #df_results = pd.DataFrame(results)
-    #df_results.to_csv('model_training_results_PC_normalized.csv')
-    #print("Results saved to model_training_results.csv")
+    # df_results = pd.DataFrame(results)
+    # df_results.to_csv('model_training_results_PC_normalized.csv')
+    # print("Results saved to model_training_results.csv")

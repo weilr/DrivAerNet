@@ -74,7 +74,7 @@ def init():
         config['exp_name'] = gen_model_name(config)
         final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
     if writer is None:
-        logdir = os.path.join('runs', f'{config["exp_name"]}')
+        logdir = os.path.join('../../runs', f'{config["exp_name"]}')
         print(f"[Main Process] Initializing SummaryWriter at {logdir}")
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
@@ -257,8 +257,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         print(
             f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s, Validation R²: {val_r2:.4f}")
 
-        writer.add_scalars("Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
-        writer.add_scalar("R²_test",  val_r2, epoch + 1)
+        writer.add_scalars("RegDGCNN_Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
+        writer.add_scalar("RegDGCNN_R²",  val_r2, epoch + 1)
 
         # Check if this is the best model based on MSE
         if avg_val_loss < best_mse:

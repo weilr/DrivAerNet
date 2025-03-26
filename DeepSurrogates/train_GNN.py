@@ -29,7 +29,7 @@ config = {
     'cuda': True,
     'exp_name': 'DragPrediction_DrivAerNet_DragGNN_100epochs_NeurIPS',
     'seed': 1,
-    'batch_size':2,
+    'batch_size': 2,
     'epochs': 100,
     'lr': 0.001,
     'optimizer': 'adam',
@@ -41,11 +41,14 @@ config = {
 # Set the device for training
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
+
 def setup_seed(seed: int):
     """Set the seed for reproducibility."""
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
+
+
 def r2_score(output, target):
     """Compute R-squared score."""
     target_mean = torch.mean(target)
@@ -54,21 +57,21 @@ def r2_score(output, target):
     r2 = 1 - ss_res / ss_tot
     return r2
 
-def initialize_model(config: dict) -> torch.nn.Module:
 
+def initialize_model(config: dict) -> torch.nn.Module:
     # Instantiate the RegDGCNN model with the specified configuration parameters
-    #model = DragGNN_XL().to(device)
+    # model = DragGNN_XL().to(device)
     model = DragGNN_XL().to(device)
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
     if config['cuda'] and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=[0,1,2,3])
+        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
 
     # Return the initialized model
     return model
 
 
-def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str,batch_size: int) -> tuple:
+def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, batch_size: int) -> tuple:
     """
     Prepare and return the training, validation, and test DataLoader objects.
 
@@ -109,6 +112,7 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str,batch_si
 
     return train_dataloader, val_dataloader, test_dataloader
 
+
 def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val_dataloader: DataLoader, config: dict):
     """
     Train and evaluate the model using the provided dataloaders and configuration.
@@ -142,12 +146,12 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
 
         # Iterate over the training data
         time.sleep(0.1)
-        for data in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",leave=False):
+        for data in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]", leave=False):
             data = data.to(device)  # Move data to the gpu
 
             optimizer.zero_grad()
             outputs = model(data)
-            loss = F.mse_loss(outputs.squeeze() , data.y)
+            loss = F.mse_loss(outputs.squeeze(), data.y)
 
             loss.backward()
             optimizer.step()
@@ -157,8 +161,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Calculate and print the average training loss for the epoch
         avg_loss = total_loss / len(train_dataloader)
         train_losses.append(avg_loss)
-        print(f"Epoch {epoch+1} Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
-
+        print(f"Epoch {epoch + 1} Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
 
         # Validation phase
         model.eval()  # Set the model to evaluation mode
@@ -171,7 +174,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         with torch.no_grad():
             # Iterate over the validation data
             time.sleep(0.1)
-            for data in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",leave=False):
+            for data in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]", leave=False):
                 inference_start_time = time.time()
                 data = data.to(device)
                 outputs = model(data)
@@ -181,7 +184,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
                 # Collect predictions and targets for R² calculation
                 all_preds.append(outputs.squeeze().cpu().numpy())
                 all_targets.append(data.y.cpu().numpy())
-        
+
                 inference_duration = time.time() - inference_start_time
                 inference_times.append(inference_duration)
 
@@ -189,7 +192,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         avg_val_loss = val_loss / len(val_dataloader)
         val_losses.append(avg_val_loss)
         avg_inference_time = sum(inference_times) / len(inference_times)
-        print(f"Epoch {epoch+1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
+        print(f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s")
 
         # Concatenate predictions and targets
         all_preds = torch.from_numpy(np.concatenate(all_preds))
@@ -220,6 +223,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     np.save(os.path.join('models', f'{config["exp_name"]}_train_losses.npy'), np.array(train_losses))
     np.save(os.path.join('models', f'{config["exp_name"]}_val_losses.npy'), np.array(val_losses))
 
+
 def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict):
     """
     Test the model using the provided test DataLoader and calculate different metrics.
@@ -242,27 +246,26 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
         for data in test_dataloader:
             start_time = time.time()  # Start time for inference
 
-            data= data.to(device)
+            data = data.to(device)
             outputs = model(data)
 
             end_time = time.time()  # End time for inference
             inference_time = end_time - start_time
             total_inference_time += inference_time  # Accumulate total inference time
 
-            mse = F.mse_loss(outputs.squeeze(), data.y) #Mean Squared Error (MSE)
-            mae = F.l1_loss(outputs.squeeze(), data.y) #Mean Absolute Error (MAE)
-            
+            mse = F.mse_loss(outputs.squeeze(), data.y)  # Mean Squared Error (MSE)
+            mae = F.l1_loss(outputs.squeeze(), data.y)  # Mean Absolute Error (MAE)
+
             # Collect predictions and targets for R² calculation
             all_preds.append(outputs.squeeze().cpu().numpy())
             all_targets.append(data.y.cpu().numpy())
-            
+
             # Accumulate metrics to compute averages later
             total_mse += mse.item()
             total_mae += mae.item()
             max_mae = max(max_mae, mae.item())
             total_samples += data.y.size(0)  # Increment total sample count
 
-    
     # Concatenate predictions and targets
     all_preds = torch.from_numpy(np.concatenate(all_preds))
     all_targets = torch.from_numpy(np.concatenate(all_targets))
@@ -281,7 +284,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
 def load_and_test_model(model_path, test_dataloader, device):
     """Load a saved model and test it."""
     model = DragGNN_XL().to(device)  # Initialize a new model instance
-    #model = torch.nn.DataParallel(model, device_ids=[0,1,2,3])
+    if config['cuda'] and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model.load_state_dict(torch.load(model_path))  # Load the saved weights
 
     test_model(model, test_dataloader, config)
@@ -290,13 +294,13 @@ def load_and_test_model(model_path, test_dataloader, device):
 if __name__ == "__main__":
     setup_seed(config['seed'])
     # Prepare data
-    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'],config['aero_coeff'],
-                                                          config['subset_dir'], config['batch_size'])
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
+                                                                        config['subset_dir'], config['batch_size'])
 
     # Initialize model
     model = DragGNN_XL().to(device)
-    #model = initialize_model(config)
-    #model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+    # model = initialize_model(config)
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
 
     # Train and evaluate
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
