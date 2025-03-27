@@ -32,6 +32,9 @@ from tqdm import tqdm
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 
+proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
+os.chdir(os.getcwd())
+
 
 def gen_model_name(config: dict) -> str:
     return "{}_{}_{}epochs_{}numPoint_{}dropout".format(config['exp_name'],
@@ -56,9 +59,9 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
-    'dataset_path': '../../TestData',  # Update this with your dataset path
-    'aero_coeff': '../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
-    'subset_dir': '../../train_test_splits'
+    'dataset_path': proj_path + '/3DMeshesSTL',  # Update this with your dataset path
+    'aero_coeff': proj_path + '/DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
+    'subset_dir': proj_path + '/train_test_splits'
 }
 
 writer = None
@@ -74,10 +77,9 @@ def init():
         config['exp_name'] = gen_model_name(config)
         final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
     if writer is None:
-        logdir = os.path.join('../../runs', f'{config["exp_name"]}')
+        logdir = os.path.join(proj_path + '/runs', f'{config["exp_name"]}')
         print(f"[Main Process] Initializing SummaryWriter at {logdir}")
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
-
 
 
 def setup_seed(seed: int):
@@ -160,9 +162,9 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     test_dataset = create_subset(full_dataset, 'test_design_ids.txt')
 
     # Initialize DataLoaders for each subset
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=4)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=4)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=16)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
 
     return train_dataloader, val_dataloader, test_dataloader
 
@@ -182,9 +184,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     training_start_time = time.time()  # Start timing for training
 
     # Initialize the Adam optimizer
-    optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4) if config[
-                                                                                          'optimizer'] == 'adam' else optim.SGD(
-        model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4) if config['optimizer'] == 'adam' \
+        else optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
     scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
@@ -259,7 +260,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
             f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s, Validation R²: {val_r2:.4f}")
 
         writer.add_scalars("RegDGCNN_Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
-        writer.add_scalar("RegDGCNN_R²",  val_r2, epoch + 1)
+        writer.add_scalar("RegDGCNN_R²", val_r2, epoch + 1)
 
         # Check if this is the best model based on MSE
         if avg_val_loss < best_mse:
