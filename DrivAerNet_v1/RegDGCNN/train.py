@@ -56,7 +56,7 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 32,
+    'batch_size': 2,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
@@ -380,6 +380,8 @@ if __name__ == "__main__":
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
                                                                         config['subset_dir'], config['num_points'],
                                                                         config['batch_size'])
+    print(f"[DEBUG] 训练集大小: {len(train_dataloader.dataset)}")
+
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 
     # prefix = 'CdPrediction_DrivAerNet_20250319_103302_100epochs_5000numPoint_0.4dropout'
