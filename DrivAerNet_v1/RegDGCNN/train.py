@@ -28,7 +28,6 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
 
 from utils import init_logger, log_tqdm
 from DrivAerNetDataset import DrivAerNetDataset
