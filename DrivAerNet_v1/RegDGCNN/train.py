@@ -31,11 +31,15 @@ from tqdm import tqdm
 
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
+import platform
 
-proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
-print("proj_path:", proj_path)
-print("proj_path2:", os.getcwd())
+
+if platform.system() == "Windows":
+    proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
+else:
+    proj_path = os.getcwd()
 os.chdir(os.getcwd())
+print("proj_path:", proj_path)
 
 
 def gen_model_name(config: dict) -> str:
@@ -65,6 +69,7 @@ config = {
     'aero_coeff': proj_path + '/DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
     'subset_dir': proj_path + '/train_test_splits'
 }
+print(config)
 
 writer = None
 final_model_path = None

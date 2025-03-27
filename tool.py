@@ -3,6 +3,9 @@
 """
 import os.path
 
+import pandas as pd
+from fontTools.subset import subset
+
 # # 读取 CSV
 # df = pd.read_csv('AeroCoefficients_DrivAerNet_FilteredCorrected.csv')
 #
@@ -62,7 +65,7 @@ import os.path
 #
 # # 读取CSV文件
 # outpath = './train_test_splits'
-# file_path = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
+# file_path = './DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'
 # df = pd.read_csv(file_path)
 #
 # # 为了训练，去掉一部分数据
@@ -107,9 +110,9 @@ import os.path
 # plt.show()
 
 
-# """
-#     移动文件
-# """
+"""
+    移动文件
+"""
 #
 # import os
 # import shutil
@@ -138,3 +141,48 @@ import os.path
 #             print(f"文件 {file_name} 复制成功！")
 #         else:
 #             print(f"文件 {file_name} 不存在！")
+
+
+"""
+    判断数据集中的文件是否存在
+"""
+import os
+import pandas as pd
+
+csv_path = './DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'  # CSV 文件路径
+data_dir = './3DMeshesSTL'  # 数据集所在文件夹
+filename_column = 'Design'  # CSV 中表示文件名的列名
+
+df = pd.read_csv(csv_path)
+
+# 检查每个文件是否存在
+missing_files = []
+
+for file in df[filename_column]:
+    file_path = os.path.join(data_dir, file + ".stl")
+    if not os.path.isfile(file_path):
+        missing_files.append(file)
+
+# 打印结果
+print(f"共 {len(missing_files)} 个文件缺失：")
+for file in missing_files:
+    print(file)
+
+subset_ids = []
+with open("train_test_splits/test_design_ids.txt", 'r') as file:
+    subset_ids = file.read().split()
+with open("train_test_splits/train_design_ids.txt", 'r') as file:
+    subset_ids += file.read().split()
+with open("train_test_splits/val_design_ids.txt", 'r') as file:
+    subset_ids += file.read().split()
+
+missing_files = []
+for file in subset_ids:
+    file_path = os.path.join(data_dir, file + ".stl")
+    if not os.path.isfile(file_path):
+        missing_files.append(file)
+
+print(f"共 {len(missing_files)} 个文件缺失：")
+for file in missing_files:
+    print(file)
+
