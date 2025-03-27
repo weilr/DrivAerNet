@@ -33,6 +33,8 @@ from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 
 proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
+print("proj_path:", proj_path)
+print("proj_path2:", os.getcwd())
 os.chdir(os.getcwd())
 
 
