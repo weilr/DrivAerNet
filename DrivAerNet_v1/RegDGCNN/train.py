@@ -148,6 +148,10 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     Returns:
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
+    print(f"[Debug][路径检查] dataset_path: {dataset_path}")
+    print(f"[Debug][路径检查] aero_coeff: {aero_coeff}")
+    print(f"[Debug][路径检查] subset_dir: {subset_dir}")
+    print(f"[Debug][路径检查] subset_dir内容: {os.listdir(subset_dir)}")
 
     # Initialize the full dataset
     full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points)
@@ -157,6 +161,14 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         try:
             with open(os.path.join(subset_dir, ids_file), 'r') as file:
                 subset_ids = file.read().split()
+            print(f"[INFO] 从 {ids_file} 中读取到 {len(subset_ids)} 个Design ID")
+
+            matched = dataset.data_frame['Design'].isin(subset_ids)
+            matched_count = matched.sum()
+            print(f"[INFO] 成功匹配的 ID 数量：{matched_count}")
+            if matched_count == 0:
+                raise ValueError(f"️数据集中没有任何一个 ID 匹配 {ids_file}，请检查 subset_dir 路径或文件内容。")
+
             # Filter the dataset DataFrame based on subset IDs
             subset_indices = dataset.data_frame[dataset.data_frame['Design'].isin(subset_ids)].index.tolist()
             return Subset(dataset, subset_indices)
@@ -172,6 +184,7 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=16)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
+    print(f"[DEBUG] 训练集大小: {len(train_dataloader.dataset)}")
 
     return train_dataloader, val_dataloader, test_dataloader
 
