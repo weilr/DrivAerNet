@@ -115,11 +115,6 @@ class DrivAerNetDataset(Dataset):
         self.num_points = num_points  # Number of points each sample should have
         self.augmentation = DataAugmentation()  # Instantiate the DataAugmentation class
 
-        print(f"[DEBUG] CSV 路径: {csv_file}")
-        print(f"[DEBUG] STL 路径样例: {os.path.join(root_dir, 'XXXX.stl')}")
-        print(f"[DEBUG] 当前工作目录: {os.getcwd()}")
-        print(f"[DEBUG] 数据数量: {len(self.data_frame)}")
-
     def __len__(self) -> int:
         """Returns the total number of samples in the dataset."""
         return len(self.data_frame)

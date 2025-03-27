@@ -9,6 +9,7 @@ This module is part of the research presented in the paper:
 This script trains and evaluates graph-based neural networks, specifically DragGNN models, for predicting aerodynamic drag.
 """
 import os
+import platform
 import time
 import torch
 import torch.nn.functional as F
@@ -24,6 +25,13 @@ from DeepSurrogate_models import DragGNN, DragGNN_XL, EnhancedDragGNN
 from DrivAerNetDataset import DrivAerNetGNNDataset
 import pandas as pd
 
+if platform.system() == "Windows":
+    proj_path = os.path.dirname(os.getcwd())
+else:
+    proj_path = os.getcwd()
+os.chdir(os.getcwd())
+print("proj_path:", proj_path)
+
 # Configuration dictionary to hold hyperparameters and settings
 config = {
     'cuda': True,
@@ -33,9 +41,9 @@ config = {
     'epochs': 100,
     'lr': 0.001,
     'optimizer': 'adam',
-    'dataset_path': '../3DMeshesSTL',  # Update this with your dataset path
-    'aero_coeff': '../DrivAerNetPlusPlus_Cd_8k_Updated.csv',
-    'subset_dir': '../train_test_splits'
+    'dataset_path': proj_path + '/3DMeshesSTL',  # Update this with your dataset path
+    'aero_coeff': proj_path + '/DrivAerNetPlusPlus_Cd_8k_Updated.csv',
+    'subset_dir': proj_path + '/train_test_splits'
 }
 
 # Set the device for training
@@ -65,7 +73,8 @@ def initialize_model(config: dict) -> torch.nn.Module:
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
     if config['cuda'] and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        device_cnt = torch.cuda.device_count()
+        model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
 
     # Return the initialized model
     return model
@@ -285,7 +294,8 @@ def load_and_test_model(model_path, test_dataloader, device):
     """Load a saved model and test it."""
     model = DragGNN_XL().to(device)  # Initialize a new model instance
     if config['cuda'] and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        device_cnt = torch.cuda.device_count()
+        model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
     model.load_state_dict(torch.load(model_path))  # Load the saved weights
 
     test_model(model, test_dataloader, config)

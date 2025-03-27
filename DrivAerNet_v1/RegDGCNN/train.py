@@ -17,6 +17,7 @@ EdgeConv operations, and global feature aggregation, to robustly learn from grap
 
 """
 import datetime
+import logging
 import os
 import time
 
@@ -29,24 +30,20 @@ from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
+from utils import init_logger, log_tqdm
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 import platform
-
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
 else:
     proj_path = os.getcwd()
 os.chdir(os.getcwd())
-print("proj_path:", proj_path)
 
 
-def gen_model_name(config: dict) -> str:
-    return "{}_{}_{}epochs_{}numPoint_{}dropout".format(config['exp_name'],
-                                                        datetime.datetime.now().strftime('%Y%m%d_%H%M%S'),
-                                                        config['epochs'],
-                                                        config['num_points'], config['dropout'])
+def gen_model_name(cfg):
+    return f"{cfg['exp_name']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
 
 
 # Configuration dictionary to hold hyperparameters and settings
@@ -65,11 +62,11 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'output_channels': 1,
-    'dataset_path': proj_path + '/3DMeshesSTL',  # Update this with your dataset path
-    'aero_coeff': proj_path + '/DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
-    'subset_dir': proj_path + '/train_test_splits'
+    'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
+                               'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
+    'subset_dir': os.path.join(proj_path, 'train_test_splits')
 }
-print(config)
 
 writer = None
 final_model_path = None
@@ -80,12 +77,20 @@ device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] els
 
 def init():
     global writer, final_model_path
+    init_logger(os.path.join(proj_path, 'logs'))
+    logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
+
+    logging.info("[Config] Training configuration:")
+    max_key_len = max(len(k) for k in config.keys())
+    for k, v in config.items():
+        logging.info(f"    {k.ljust(max_key_len)} : {v}")
+
     if final_model_path is None:
         config['exp_name'] = gen_model_name(config)
         final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
     if writer is None:
-        logdir = os.path.join(proj_path + '/runs', f'{config["exp_name"]}')
-        print(f"[Main Process] Initializing SummaryWriter at {logdir}")
+        logdir = os.path.join(proj_path, 'runs', f'{config["exp_name"]}')
+        logging.info(f"[Main] Initializing TensorBoard at {logdir}")
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
 
@@ -148,11 +153,6 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     Returns:
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
-    print(f"[Debug][路径检查] dataset_path: {dataset_path}")
-    print(f"[Debug][路径检查] aero_coeff: {aero_coeff}")
-    print(f"[Debug][路径检查] subset_dir: {subset_dir}")
-    print(f"[Debug][路径检查] subset_dir内容: {os.listdir(subset_dir)}")
-
     # Initialize the full dataset
     full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points)
 
@@ -161,14 +161,6 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         try:
             with open(os.path.join(subset_dir, ids_file), 'r') as file:
                 subset_ids = file.read().split()
-            print(f"[INFO] 从 {ids_file} 中读取到 {len(subset_ids)} 个Design ID")
-
-            matched = dataset.data_frame['Design'].isin(subset_ids)
-            matched_count = matched.sum()
-            print(f"[INFO] 成功匹配的 ID 数量：{matched_count}")
-            if matched_count == 0:
-                raise ValueError(f"️数据集中没有任何一个 ID 匹配 {ids_file}，请检查 subset_dir 路径或文件内容。")
-
             # Filter the dataset DataFrame based on subset IDs
             subset_indices = dataset.data_frame[dataset.data_frame['Design'].isin(subset_ids)].index.tolist()
             return Subset(dataset, subset_indices)
@@ -184,7 +176,6 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=16)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=16)
-    print(f"[DEBUG] 训练集大小: {len(train_dataloader.dataset)}")
 
     return train_dataloader, val_dataloader, test_dataloader
 
@@ -220,8 +211,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
 
         # Iterate over the training data
         time.sleep(0.1)
-        for data, targets in tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]",
-                                  leave=False):
+        for data, targets in log_tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
             data, targets = data.to(device), targets.to(device).squeeze()  # Move data to the gpu
             data = data.permute(0, 2, 1)  # Permute dimensions
 
@@ -237,7 +227,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Calculate and print the average training loss for the epoch
         avg_loss = total_loss / len(train_dataloader)
         train_losses.append(avg_loss)
-        print(f"Epoch {epoch + 1} Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
+        logging.info(f"[Epoch {epoch + 1}] Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
 
         # Validation phase
         model.eval()  # Set the model to evaluation mode
@@ -250,8 +240,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         with torch.no_grad():
             # Iterate over the validation data
             time.sleep(0.1)
-            for data, targets in tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]",
-                                      leave=False):
+            for data, targets in log_tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]", ):
                 inference_start_time = time.time()
                 data, targets = data.to(device), targets.to(device).squeeze()
                 data = data.permute(0, 2, 1)
@@ -276,8 +265,9 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Compute R² for the entire validation dataset
         val_r2 = r2_score(all_preds, all_targets)
         # print(f"Validation R²: {val_r2:.4f}")
-        print(
-            f"Epoch {epoch + 1} Validation Loss: {avg_val_loss:.4f}, Avg Inference Time: {avg_inference_time:.4f}s, Validation R²: {val_r2:.4f}")
+        logging.info(
+            f"[Epoch {epoch + 1}] Validation Loss: {avg_val_loss:.4f}, Validation R^2: {val_r2:.4f}, Learning rate:{optimizer.param_groups[0]['lr']}"
+            f" Avg Inference Time: {avg_inference_time:.4f}s.")
 
         writer.add_scalars("RegDGCNN_Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
         writer.add_scalar("RegDGCNN_R²", val_r2, epoch + 1)
@@ -288,17 +278,17 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
             best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
             os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
             torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved with MSE: {best_mse:.6f} and R²: {val_r2:.4f}")
+            logging.info(f"[Model] New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
 
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
 
     training_duration = time.time() - training_start_time
-    print(f"Total training time: {training_duration:.2f}s")
+    logging.info(f"Total training time: {training_duration:.2f}s")
     # Save the final model state to disk
     model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
     torch.save(model.state_dict(), model_path)
-    print(f"Model saved to {model_path}")
+    logging.info(f"Model saved to {model_path}")
     # Save losses for plotting
     np.save(os.path.join('models', f'{config["exp_name"]}_train_losses.npy'), np.array(train_losses))
     np.save(os.path.join('models', f'{config["exp_name"]}_val_losses.npy'), np.array(val_losses))
@@ -358,8 +348,8 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
     avg_mae = total_mae / len(test_dataloader)
 
     # Output test results
-    print(f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {test_r2:.4f}")
-    print(f"Total inference time: {total_inference_time:.2f}s for {total_samples} samples")
+    logging.info(f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {test_r2:.4f}")
+    logging.info(f"Total inference time: {total_inference_time:.2f}s for {total_samples} samples")
 
 
 def load_and_test_model(model_path, test_dataloader, device):
@@ -380,7 +370,6 @@ if __name__ == "__main__":
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
                                                                         config['subset_dir'], config['num_points'],
                                                                         config['batch_size'])
-    print(f"[DEBUG] 训练集大小: {len(train_dataloader.dataset)}")
 
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 
@@ -389,10 +378,10 @@ if __name__ == "__main__":
     # final_model_path = os.path.join('models', f'{prefix}_final_model.pth')
     # Load and test both the best and final models
     final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
-    print("Testing the final model:")
+    logging.info("Testing the final model:")
     load_and_test_model(final_model_path, test_dataloader, device)
 
     # best_model_path = os.path.join('models', f'{prefix}_best_model.pth')
     best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
-    print("Testing the best model:")
+    logging.info("Testing the best model:")
     load_and_test_model(best_model_path, test_dataloader, device)
