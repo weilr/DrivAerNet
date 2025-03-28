@@ -52,5 +52,5 @@ def progress(iterable, desc="", log_interval=10):
         logging.info(f"[progress] {desc}")
         for i, item in enumerate(iterable):
             if i % log_interval == 0 or i == total - 1:
-                logging.info(f"[progress] {desc}")
+                logging.info(f"[progress] {desc} [{i + 1}/{total}]")
             yield item
