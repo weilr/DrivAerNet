@@ -29,7 +29,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import init_logger, log_tqdm
+from utils import init_logger, progress
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 import platform
@@ -52,7 +52,7 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 2,
+    'batch_size': 32,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
@@ -64,20 +64,26 @@ config = {
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'train_test_splits')
+    'subset_dir': os.path.join(proj_path, 'train_val_test_splits')
 }
 
 writer = None
 final_model_path = None
+device = None
+
 
 # Set the device for training
-device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
 
 def init():
-    global writer, final_model_path
+    global writer, final_model_path, device
     init_logger(os.path.join(proj_path, 'logs'))
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
+
+    device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
+    logging.info("[Check CUDA] CUDA is available. GPU count: %d", torch.cuda.device_count())
+    for i in range(torch.cuda.device_count()):
+        logging.info("      GPU %d: %s", i, torch.cuda.get_device_name(i))
 
     logging.info("[Config] Training configuration:")
     max_key_len = max(len(k) for k in config.keys())
@@ -210,7 +216,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
 
         # Iterate over the training data
         time.sleep(0.1)
-        for data, targets in log_tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
+        for data, targets in progress(train_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Training]"):
             data, targets = data.to(device), targets.to(device).squeeze()  # Move data to the gpu
             data = data.permute(0, 2, 1)  # Permute dimensions
 
@@ -239,7 +245,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         with torch.no_grad():
             # Iterate over the validation data
             time.sleep(0.1)
-            for data, targets in log_tqdm(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]", ):
+            for data, targets in progress(val_dataloader, desc=f"Epoch {epoch + 1}/{config['epochs']} [Validation]", ):
                 inference_start_time = time.time()
                 data, targets = data.to(device), targets.to(device).squeeze()
                 data = data.permute(0, 2, 1)
@@ -277,7 +283,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
             best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
             os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
             torch.save(model.state_dict(), best_model_path)
-            logging.info(f"[Model] New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
+            logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
 
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
