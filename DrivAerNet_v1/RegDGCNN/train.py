@@ -29,7 +29,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import init_logger, progress
+from trainUtil import init_logger, progress
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 import platform

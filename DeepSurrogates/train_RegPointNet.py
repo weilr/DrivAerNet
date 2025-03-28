@@ -26,7 +26,7 @@ from tqdm import tqdm
 from DeepSurrogate_models import RegPointNet
 import pandas as pd
 from DrivAerNetDataset import DrivAerNetDataset
-from utils import init_logger
+from trainUtil import init_logger
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
