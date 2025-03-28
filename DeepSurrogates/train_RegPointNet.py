@@ -21,12 +21,10 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import transforms
 from tqdm import tqdm
 from DeepSurrogate_models import RegPointNet
-import pandas as pd
 from DrivAerNetDataset import DrivAerNetDataset
-from trainUtil import init_logger
+from DeepSurrogates.trainUtil import init_logger
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
