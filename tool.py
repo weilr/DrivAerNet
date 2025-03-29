@@ -218,9 +218,13 @@ config = {
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
     'subset_dir': os.path.join('train_test_splits')
 }
+device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
 # 假设你的模型类是 RegDGCNN
-model = RegDGCNN(args=config)  # 先创建模型实例
+model = RegDGCNN(args=config).to(device)  # 先创建模型实例
+
+device_cnt = torch.cuda.device_count()
+model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
 
 # 加载训练好的模型权重
 state_dict = torch.load('./models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth')
