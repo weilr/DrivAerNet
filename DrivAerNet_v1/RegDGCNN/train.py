@@ -132,8 +132,6 @@ def initialize_model(config: dict) -> torch.nn.Module:
 
     # Instantiate the RegDGCNN model with the specified configuration parameters
     model = RegDGCNN(args=config).to(device)
-    logging.info("[Model] Initializing the model, Parameters")
-    summary(model, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
 
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
@@ -141,6 +139,8 @@ def initialize_model(config: dict) -> torch.nn.Module:
         device_cnt = torch.cuda.device_count()
         model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
 
+    logging.info("[Model] Initializing the model, Model parameters:")
+    summary(model, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
     # Return the initialized model
     return model
 
