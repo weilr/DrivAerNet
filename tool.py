@@ -6,8 +6,6 @@ import os.path
 import pandas as pd
 from fontTools.subset import subset
 
-from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
-
 # # 读取 CSV
 # df = pd.read_csv('AeroCoefficients_DrivAerNet_FilteredCorrected.csv')
 #
@@ -189,13 +187,14 @@ from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
 #     print(file)
 
 
-
 """
     查看参数量
 """
 
 import torch
 from torchinfo import summary
+from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
+from collections import OrderedDict
 
 # 假设你的模型是 ResNet，下面是一个例子，你可以替换成你的模型
 # 先加载模型
@@ -215,19 +214,32 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],sq
     'dataset_path': os.path.join('3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join( 'DrivAerNet_v1',
+    'aero_coeff': os.path.join('DrivAerNet_v1',
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join( 'train_test_splits')
+    'subset_dir': os.path.join('train_test_splits')
 }
-device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
-model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
-model.load_state_dict(torch.load('./models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'))  # Load the saved weights
+# 假设你的模型类是 RegDGCNN
+model = RegDGCNN(args=config)  # 先创建模型实例
+
+# 加载 state_dict
+state_dict = torch.load(
+    './models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth')
+
+# 创建一个新的 OrderedDict，用来存储去掉 "module." 前缀的权重
+new_state_dict = OrderedDict()
+
+# 遍历原来的 state_dict，并去除 "module." 前缀
+for k, v in state_dict.items():
+    name = k[7:] if k.startswith('module.') else k  # 去掉 "module." 前缀
+    new_state_dict[name] = v
+
+# 加载修改后的 state_dict
+model.load_state_dict(new_state_dict)
 
 # 如果你的模型包含 DataParallel（多卡训练），需要提取出模型本身
-if isinstance(model, torch.nn.DataParallel):
-    model = model.module
+# if isinstance(model, torch.nn.DataParallel):
+#     model = model.module
 
 # 打印模型的总结
-summary(model, input_size=(config['batch_size'],3,5000))  # 修改 input_size 为你的模型输入形状
-
+summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
