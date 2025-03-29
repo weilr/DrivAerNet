@@ -29,6 +29,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
+from torchinfo import summary
 
 from DeepSurrogates.trainUtil import init_logger, progress
 from DrivAerNetDataset import DrivAerNetDataset
@@ -52,12 +53,12 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 2,
+    'batch_size': 32,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
-    'num_workers': 16,
+    'num_workers': 64,
     'optimizer': 'adam',
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],sq
@@ -131,6 +132,8 @@ def initialize_model(config: dict) -> torch.nn.Module:
 
     # Instantiate the RegDGCNN model with the specified configuration parameters
     model = RegDGCNN(args=config).to(device)
+    logging.info("[Model] Initializing the model, Parameters")
+    summary(model, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
 
     # If CUDA is enabled and more than one GPU is available, wrap the model in a DataParallel module
     # to enable parallel computation across multiple GPUs. Specifically, use GPUs with IDs 0, 1, 2, and 3.
