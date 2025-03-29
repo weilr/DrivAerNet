@@ -6,6 +6,8 @@ import os.path
 import pandas as pd
 from fontTools.subset import subset
 
+from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
+
 # # 读取 CSV
 # df = pd.read_csv('AeroCoefficients_DrivAerNet_FilteredCorrected.csv')
 #
@@ -146,43 +148,86 @@ from fontTools.subset import subset
 """
     判断数据集中的文件是否存在
 """
-import os
-import pandas as pd
+# import os
+# import pandas as pd
+#
+# csv_path = './DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'  # CSV 文件路径
+# data_dir = './3DMeshesSTL'  # 数据集所在文件夹
+# filename_column = 'Design'  # CSV 中表示文件名的列名
+#
+# df = pd.read_csv(csv_path)
+#
+# # 检查每个文件是否存在
+# missing_files = []
+#
+# for file in df[filename_column]:
+#     file_path = os.path.join(data_dir, file + ".stl")
+#     if not os.path.isfile(file_path):
+#         missing_files.append(file)
+#
+# # 打印结果
+# print(f"共 {len(missing_files)} 个文件缺失：")
+# for file in missing_files:
+#     print(file)
+#
+# subset_ids = []
+# with open("train_test_splits/test_design_ids.txt", 'r') as file:
+#     subset_ids = file.read().split()
+# with open("train_test_splits/train_design_ids.txt", 'r') as file:
+#     subset_ids += file.read().split()
+# with open("train_test_splits/val_design_ids.txt", 'r') as file:
+#     subset_ids += file.read().split()
+#
+# missing_files = []
+# for file in subset_ids:
+#     file_path = os.path.join(data_dir, file + ".stl")
+#     if not os.path.isfile(file_path):
+#         missing_files.append(file)
+#
+# print(f"共 {len(missing_files)} 个文件缺失：")
+# for file in missing_files:
+#     print(file)
 
-csv_path = './DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'  # CSV 文件路径
-data_dir = './3DMeshesSTL'  # 数据集所在文件夹
-filename_column = 'Design'  # CSV 中表示文件名的列名
 
-df = pd.read_csv(csv_path)
 
-# 检查每个文件是否存在
-missing_files = []
+"""
+    查看参数量
+"""
 
-for file in df[filename_column]:
-    file_path = os.path.join(data_dir, file + ".stl")
-    if not os.path.isfile(file_path):
-        missing_files.append(file)
+import torch
+from torchinfo import summary
 
-# 打印结果
-print(f"共 {len(missing_files)} 个文件缺失：")
-for file in missing_files:
-    print(file)
+# 假设你的模型是 ResNet，下面是一个例子，你可以替换成你的模型
+# 先加载模型
+config = {
+    'exp_name': 'CdPrediction_DrivAerNet',
+    'cuda': True,
+    'seed': 1,
+    'num_points': 5000,
+    'lr': 0.001,
+    'batch_size': 32,
+    'epochs': 100,
+    'dropout': 0.4,
+    'emb_dims': 512,
+    'k': 40,
+    'num_workers': 64,
+    'optimizer': 'adam',
+    # 'channels': [6, 64, 128, 256, 512, 1024],
+    # 'linear_sizes': [128, 64, 32, 16],sq
+    'dataset_path': os.path.join('3DMeshesSTL'),  # Update this with your dataset path
+    'aero_coeff': os.path.join( 'DrivAerNet_v1',
+                               'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
+    'subset_dir': os.path.join( 'train_test_splits')
+}
+device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
-subset_ids = []
-with open("train_test_splits/test_design_ids.txt", 'r') as file:
-    subset_ids = file.read().split()
-with open("train_test_splits/train_design_ids.txt", 'r') as file:
-    subset_ids += file.read().split()
-with open("train_test_splits/val_design_ids.txt", 'r') as file:
-    subset_ids += file.read().split()
+model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
+model.load_state_dict(torch.load('./DrivAerNet_v1/RegDGCNN/models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'))  # Load the saved weights
 
-missing_files = []
-for file in subset_ids:
-    file_path = os.path.join(data_dir, file + ".stl")
-    if not os.path.isfile(file_path):
-        missing_files.append(file)
+# 如果你的模型包含 DataParallel（多卡训练），需要提取出模型本身
+if isinstance(model, torch.nn.DataParallel):
+    model = model.module
 
-print(f"共 {len(missing_files)} 个文件缺失：")
-for file in missing_files:
-    print(file)
+# 打印模型的总结
+summary(model, input_size=(config['batch_size'],3,5000))  # 修改 input_size 为你的模型输入形状
 

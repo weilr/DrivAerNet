@@ -19,6 +19,7 @@ EdgeConv operations, and global feature aggregation, to robustly learn from grap
 import datetime
 import logging
 import os
+import platform
 import time
 
 import numpy as np
@@ -32,7 +33,6 @@ from torch.utils.tensorboard import SummaryWriter
 from DeepSurrogates.trainUtil import init_logger, progress
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
-import platform
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
@@ -52,20 +52,19 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 32,
+    'batch_size': 2,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
-    'num_workers':64,
+    'num_workers': 16,
     'optimizer': 'adam',
     # 'channels': [6, 64, 128, 256, 512, 1024],
-    # 'linear_sizes': [128, 64, 32, 16],
-    'output_channels': 1,
+    # 'linear_sizes': [128, 64, 32, 16],sq
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'train_val_test_splits')
+    'subset_dir': os.path.join(proj_path, 'train_test_splits')
 }
 
 writer = None
@@ -73,14 +72,12 @@ final_model_path = None
 device = None
 
 
-# Set the device for training
-
-
 def init():
     global writer, final_model_path, device
     init_logger(os.path.join(proj_path, 'logs'))
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
 
+    # Set the device for training
     device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
     logging.info("[Check CUDA] CUDA is available. GPU count: %d", torch.cuda.device_count())
     for i in range(torch.cuda.device_count()):
@@ -93,7 +90,7 @@ def init():
 
     if final_model_path is None:
         config['exp_name'] = gen_model_name(config)
-        final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
+        final_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_final_model.pth')
     if writer is None:
         logdir = os.path.join(proj_path, 'runs', f'{config["exp_name"]}')
         logging.info(f"[Main] Initializing TensorBoard at {logdir}")
@@ -179,9 +176,12 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
     test_dataset = create_subset(full_dataset, 'test_design_ids.txt')
 
     # Initialize DataLoaders for each subset
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=config['num_workers'])
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=config['num_workers'])
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=config['num_workers'])
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,
+                                  num_workers=config['num_workers'])
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True,
+                                num_workers=config['num_workers'])
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True,
+                                 num_workers=config['num_workers'])
 
     return train_dataloader, val_dataloader, test_dataloader
 
@@ -281,7 +281,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Check if this is the best model based on MSE
         if avg_val_loss < best_mse:
             best_mse = avg_val_loss
-            best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
+            best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
             os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
             torch.save(model.state_dict(), best_model_path)
             logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
@@ -292,12 +292,12 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     training_duration = time.time() - training_start_time
     logging.info(f"Total training time: {training_duration:.2f}s")
     # Save the final model state to disk
-    model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
+    model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_final_model.pth')
     torch.save(model.state_dict(), model_path)
     logging.info(f"Model saved to {model_path}")
     # Save losses for plotting
-    np.save(os.path.join('models', f'{config["exp_name"]}_train_losses.npy'), np.array(train_losses))
-    np.save(os.path.join('models', f'{config["exp_name"]}_val_losses.npy'), np.array(val_losses))
+    np.save(os.path.join(proj_path, 'models', f'{config["exp_name"]}_train_losses.npy'), np.array(train_losses))
+    np.save(os.path.join(proj_path, 'models', f'{config["exp_name"]}_val_losses.npy'), np.array(val_losses))
 
 
 def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict):
@@ -381,13 +381,13 @@ if __name__ == "__main__":
 
     # prefix = 'CdPrediction_DrivAerNet_20250319_103302_100epochs_5000numPoint_0.4dropout'
     # prefix = 'CdPrediction_DrivAerNet_20250319_000814_100epochs_5000numPoint_0.4dropout'
-    # final_model_path = os.path.join('models', f'{prefix}_final_model.pth')
+    # final_model_path = os.path.join(proj_path,'models', f'{prefix}_final_model.pth')
     # Load and test both the best and final models
-    final_model_path = os.path.join('models', f'{config["exp_name"]}_final_model.pth')
+    final_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_final_model.pth')
     logging.info("Testing the final model:")
     load_and_test_model(final_model_path, test_dataloader, device)
 
     # best_model_path = os.path.join('models', f'{prefix}_best_model.pth')
-    best_model_path = os.path.join('models', f'{config["exp_name"]}_best_model.pth')
+    best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
     logging.info("Testing the best model:")
     load_and_test_model(best_model_path, test_dataloader, device)

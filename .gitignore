@@ -18,6 +18,7 @@ Thumbs.db
 logs/
 db.sqlite3
 
+models/
 3DMeshesSTL/
 AnnotationsSTL/
 DrivAerNet_v1/RegDGCNN/models/
