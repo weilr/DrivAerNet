@@ -220,24 +220,14 @@ config = {
 }
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
-# 假设你的模型类是 RegDGCNN
-model = RegDGCNN(args=config).to(device)  # 先创建模型实例
-
-device_cnt = torch.cuda.device_count()
-model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
-
 # 加载训练好的模型权重
-state_dict = torch.load('./models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth')
+model_path = './models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'
 
-# 创建一个新的 OrderedDict 来存储去除 "module." 前缀的权重
-new_state_dict = OrderedDict()
+model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
+if config['cuda'] and torch.cuda.device_count() > 1:
+    device_cnt = torch.cuda.device_count()
+    model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
+model.load_state_dict(torch.load(model_path))
 
-# 去掉 "module." 前缀
-for k, v in state_dict.items():
-    name = k[7:] if k.startswith('module.') else k  # 去掉 "module." 前缀
-    new_state_dict[name] = v
-
-# 加载修改后的 state_dict
-model.load_state_dict(new_state_dict)
 # 打印模型的总结
 summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
