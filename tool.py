@@ -222,7 +222,7 @@ config = {
 device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
 
 model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
-model.load_state_dict(torch.load('./DrivAerNet_v1/RegDGCNN/models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'))  # Load the saved weights
+model.load_state_dict(torch.load('./models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'))  # Load the saved weights
 
 # 如果你的模型包含 DataParallel（多卡训练），需要提取出模型本身
 if isinstance(model, torch.nn.DataParallel):
