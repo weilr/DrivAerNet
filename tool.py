@@ -225,21 +225,7 @@ model = RegDGCNN(args=config)  # 先创建模型实例
 # 加载 state_dict
 state_dict = torch.load(
     './models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth')
-
-# 创建一个新的 OrderedDict，用来存储去掉 "module." 前缀的权重
-new_state_dict = OrderedDict()
-
-# 遍历原来的 state_dict，并去除 "module." 前缀
-for k, v in state_dict.items():
-    name = k[7:] if k.startswith('module.') else k  # 去掉 "module." 前缀
-    new_state_dict[name] = v
-
-# 加载修改后的 state_dict
-model.load_state_dict(new_state_dict)
-
-# 如果你的模型包含 DataParallel（多卡训练），需要提取出模型本身
-# if isinstance(model, torch.nn.DataParallel):
-#     model = model.module
+model.load_state_dict(state_dict)
 
 # 打印模型的总结
 summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
