@@ -140,7 +140,7 @@ def initialize_model(config: dict) -> torch.nn.Module:
         model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
 
     logging.info("[Model] Initializing the model, Model parameters:")
-    summary(model, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
+    summary(model.module, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
     # Return the initialized model
     return model
 
