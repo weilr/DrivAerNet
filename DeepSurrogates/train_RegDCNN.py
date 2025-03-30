@@ -31,12 +31,12 @@ from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 
+from DeepSurrogates.DeepSurrogate_models import RegDGCNN
+from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
 from DeepSurrogates.trainUtil import init_logger, progress
-from DrivAerNetDataset import DrivAerNetDataset
-from model import RegDGCNN
 
 if platform.system() == "Windows":
-    proj_path = os.path.dirname(os.path.dirname(os.getcwd()))
+    proj_path = os.path.dirname(os.getcwd())
 else:
     proj_path = os.getcwd()
 os.chdir(os.getcwd())
@@ -63,9 +63,8 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],sq
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
-                               'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'train_test_splits')
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'),
+    'subset_dir': os.path.join(proj_path, 'splits')
 }
 
 writer = None
@@ -138,9 +137,11 @@ def initialize_model(config: dict) -> torch.nn.Module:
     if config['cuda'] and torch.cuda.device_count() > 1:
         device_cnt = torch.cuda.device_count()
         model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
+        summary(model.module, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
+    else:
+        summary(model.module, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
 
     logging.info("[Model] Initializing the model, Model parameters:")
-    summary(model.module, input_size=(config['batch_size'], 3, config['num_points']))  # 修改 input_size 为你的模型输入形状
     # Return the initialized model
     return model
 
