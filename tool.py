@@ -64,15 +64,15 @@ from fontTools.subset import subset
 # from sklearn.model_selection import train_test_split
 #
 # # 读取CSV文件
-# outpath = './train_test_splits'
-# file_path = './DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'
+# outpath = './train_splits'
+# file_path = './DrivAerNetPlusPlus_Cd_8k_Updated.csv'
 # df = pd.read_csv(file_path)
 #
 # # 为了训练，去掉一部分数据
-# df, _ = train_test_split(df, test_size=0.99, random_state=42)
+# # df, _ = train_test_split(df, test_size=0, random_state=42)
 #
 # # 划分训练集、测试集、验证集
-# train_data, temp_data = train_test_split(df, test_size=0.4, random_state=42)
+# train_data, temp_data = train_test_split(df, test_size=0.7, random_state=42)
 # val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
 #
 # if not os.path.exists(outpath):
@@ -86,6 +86,50 @@ from fontTools.subset import subset
 # print(f"训练集: {train_data.shape[0]}条数据")
 # print(f"验证集: {val_data.shape[0]}条数据")
 # print(f"测试集: {test_data.shape[0]}条数据")
+
+
+import pandas as pd
+import os
+import random
+
+# ======== 配置项 ========
+csv_path = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'  # CSV路径，含有Design列
+stl_dir = './3DMeshesSTL'      # 存放STL文件的文件夹
+output_dir = './splits'        # 输出划分结果目录
+
+train_size, val_size, test_size = 5600, 1200, 1200
+stl_suffix = '.stl'            # 文件后缀，可改为 .obj 等
+
+# ======== 创建输出文件夹 ========
+os.makedirs(output_dir, exist_ok=True)
+
+# ======== 读取数据并过滤存在的文件 ========
+df = pd.read_csv(csv_path)
+all_designs = df['Design'].dropna().unique().tolist()
+
+# 过滤存在的STL文件
+valid_designs = [d for d in all_designs if os.path.isfile(os.path.join(stl_dir, f'{d}{stl_suffix}'))]
+print(f"总共 {len(all_designs)} 个 Design，其中 {len(valid_designs)} 个有对应的 STL 文件")
+
+# ======== 随机划分数据 ========
+random.shuffle(valid_designs)
+
+train_ids = valid_designs[:train_size]
+val_ids = valid_designs[train_size:train_size + val_size]
+test_ids = valid_designs[train_size + val_size:train_size + val_size + test_size]
+
+# ======== 保存结果 ========
+def save_ids(ids, name):
+    with open(os.path.join(output_dir, f'{name}_design_ids.txt'), 'w') as f:
+        f.write('\n'.join(ids))
+
+save_ids(train_ids, 'train')
+save_ids(val_ids, 'val')
+save_ids(test_ids, 'test')
+
+print(f"[Done] 训练: {len(train_ids)}，验证: {len(val_ids)}，测试: {len(test_ids)}")
+
+
 
 
 """
@@ -191,43 +235,43 @@ from fontTools.subset import subset
     查看参数量
 """
 
-import torch
-from torchinfo import summary
-from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
-from collections import OrderedDict
-
-# 假设你的模型是 ResNet，下面是一个例子，你可以替换成你的模型
-# 先加载模型
-config = {
-    'exp_name': 'CdPrediction_DrivAerNet',
-    'cuda': True,
-    'seed': 1,
-    'num_points': 5000,
-    'lr': 0.001,
-    'batch_size': 32,
-    'epochs': 100,
-    'dropout': 0.4,
-    'emb_dims': 512,
-    'k': 40,
-    'num_workers': 64,
-    'optimizer': 'adam',
-    # 'channels': [6, 64, 128, 256, 512, 1024],
-    # 'linear_sizes': [128, 64, 32, 16],sq
-    'dataset_path': os.path.join('3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join('DrivAerNet_v1',
-                               'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join('train_test_splits')
-}
-device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
-
-# 加载训练好的模型权重
-model_path = './models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'
-
-model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
-if config['cuda'] and torch.cuda.device_count() > 1:
-    device_cnt = torch.cuda.device_count()
-    model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
-model.load_state_dict(torch.load(model_path))
-
-# 打印模型的总结
-summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
+# import torch
+# from torchinfo import summary
+# from DrivAerNet_v1.RegDGCNN.model import RegDGCNN
+# from collections import OrderedDict
+#
+# # 假设你的模型是 ResNet，下面是一个例子，你可以替换成你的模型
+# # 先加载模型
+# config = {
+#     'exp_name': 'CdPrediction_DrivAerNet',
+#     'cuda': True,
+#     'seed': 1,
+#     'num_points': 5000,
+#     'lr': 0.001,
+#     'batch_size': 32,
+#     'epochs': 100,
+#     'dropout': 0.4,
+#     'emb_dims': 512,
+#     'k': 40,
+#     'num_workers': 64,
+#     'optimizer': 'adam',
+#     # 'channels': [6, 64, 128, 256, 512, 1024],
+#     # 'linear_sizes': [128, 64, 32, 16],sq
+#     'dataset_path': os.path.join('3DMeshesSTL'),  # Update this with your dataset path
+#     'aero_coeff': os.path.join('DrivAerNet_v1',
+#                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
+#     'subset_dir': os.path.join('train_test_splits')
+# }
+# device = torch.device("cuda" if torch.cuda.is_available() and config['cuda'] else "cpu")
+#
+# # 加载训练好的模型权重
+# model_path = './models/CdPrediction_DrivAerNet_20250328_142610_100epochs_5000numPoint_0.4dropout_best_model.pth'
+#
+# model = RegDGCNN(args=config).to(device)  # Initialize a new model instance
+# if config['cuda'] and torch.cuda.device_count() > 1:
+#     device_cnt = torch.cuda.device_count()
+#     model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
+# model.load_state_dict(torch.load(model_path))
+#
+# # 打印模型的总结
+# summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
