@@ -341,37 +341,37 @@ from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
 """
     缓存数据
 """
-# import platform
-#
-# if platform.system() == "Windows":
-#     proj_path = os.getcwd()
-# else:
-#     proj_path = os.getcwd()
-# os.chdir(os.getcwd())
-#
-# config = {
-#     'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
-#     'train_target': 'Cd',
-#     'cuda': True,
-#     'seed': 1,
-#     'num_points': 5000,
-#     'lr': 0.001,
-#     'batch_size': 32,
-#     'epochs': 100,
-#     'dropout': 0.4,
-#     'emb_dims': 512,
-#     'k': 40,
-#     'num_workers': 64,
-#     'optimizer': 'adam',
-#     # 'channels': [6, 64, 128, 256, 512, 1024],
-#     # 'linear_sizes': [128, 64, 32, 16],
-#     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-#     'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-#     'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
-# }
-#
-# dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
-#                             num_points=config['num_points'], target=config['train_target'])
-#
-#
-# dataset.generate_cache()
+import platform
+
+if platform.system() == "Windows":
+    proj_path = os.getcwd()
+else:
+    proj_path = os.getcwd()
+os.chdir(os.getcwd())
+
+config = {
+    'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
+    'train_target': 'Cd',
+    'cuda': True,
+    'seed': 1,
+    'num_points': 10000,
+    'lr': 0.001,
+    'batch_size': 32,
+    'epochs': 100,
+    'dropout': 0.4,
+    'emb_dims': 512,
+    'k': 40,
+    'num_workers': 64,
+    'optimizer': 'adam',
+    # 'channels': [6, 64, 128, 256, 512, 1024],
+    # 'linear_sizes': [128, 64, 32, 16],
+    'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
+    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
+}
+
+dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
+                            num_points=config['num_points'], target=config['train_target'])
+
+
+dataset.generate_cache()
