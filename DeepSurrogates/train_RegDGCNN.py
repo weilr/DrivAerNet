@@ -49,7 +49,7 @@ def gen_model_name(cfg):
 # Configuration dictionary to hold hyperparameters and settings
 config = {
     'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
-    'train_target': 'Cd',
+    'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
@@ -162,7 +162,8 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
     # Initialize the full dataset
-    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, target=target)
+    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, target=target,
+                                     pointcloud_exist=True)
 
     # Helper function to create subsets from IDs in text files
     def create_subset(dataset, ids_file):
