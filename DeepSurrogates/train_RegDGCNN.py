@@ -49,6 +49,7 @@ def gen_model_name(cfg):
 # Configuration dictionary to hold hyperparameters and settings
 config = {
     'exp_name': 'CdPrediction_DrivAerNet',
+    'train_target': 'Cd',
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
@@ -63,8 +64,8 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],sq
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits')
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
+    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
 }
 
 writer = None
@@ -144,7 +145,8 @@ def initialize_model(config: dict) -> torch.nn.Module:
     return model
 
 
-def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_points: int, batch_size: int) -> tuple:
+def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_points: int, batch_size: int,
+                    target: str = 'Average Cd') -> tuple:
     """
     Prepare and return the training, validation, and test DataLoader objects.
 
@@ -154,12 +156,13 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         subset_dir (str): The directory containing the subset files (train, val, test).
         num_points (int): The number of points to sample from each point cloud in the dataset.
         batch_size (int): The number of samples per batch to load.
+        target(str): Training target.
 
     Returns:
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
     # Initialize the full dataset
-    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points)
+    full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, target=target)
 
     # Helper function to create subsets from IDs in text files
     def create_subset(dataset, ids_file):
@@ -377,7 +380,7 @@ if __name__ == "__main__":
     model = initialize_model(config).to(device)
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
                                                                         config['subset_dir'], config['num_points'],
-                                                                        config['batch_size'])
+                                                                        config['batch_size'], config['train_target'])
 
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 

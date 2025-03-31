@@ -25,12 +25,15 @@ from torch_geometric.data import Data
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 class DataAugmentation:
     """
     Class encapsulating various data augmentation techniques for point clouds.
     """
+
     @staticmethod
-    def translate_pointcloud(pointcloud: torch.Tensor, translation_range: Tuple[float, float] = (2./3., 3./2.)) -> torch.Tensor:
+    def translate_pointcloud(pointcloud: torch.Tensor,
+                             translation_range: Tuple[float, float] = (2. / 3., 3. / 2.)) -> torch.Tensor:
         """
         Translates the pointcloud by a random factor within a given range.
 
@@ -85,11 +88,14 @@ class DataAugmentation:
         dropped_pointcloud = pointcloud[keep_indices, :]
         return dropped_pointcloud
 
+
 class DrivAerNetDataset(Dataset):
     """
     PyTorch Dataset class for the DrivAerNet dataset, handling loading, transforming, and augmenting 3D car models.
     """
-    def __init__(self, root_dir: str, csv_file: str, num_points: int, transform: Optional[Callable] = None, pointcloud_exist: bool = False):
+
+    def __init__(self, root_dir: str, csv_file: str, num_points: int, transform: Optional[Callable] = None,
+                 pointcloud_exist: bool = False, target: str = 'Average Cd'):
         """
         Initializes the DrivAerNetDataset instance.
 
@@ -112,6 +118,7 @@ class DrivAerNetDataset(Dataset):
         self.augmentation = DataAugmentation()
         self.pointcloud_exist = pointcloud_exist
         self.cache = {}
+        self.target = target
 
     def __len__(self) -> int:
         """Returns the total number of samples in the dataset."""
@@ -144,6 +151,7 @@ class DrivAerNetDataset(Dataset):
         max_vals, _ = data.max(dim=0, keepdim=True)
         normalized_data = (data - mean_vals) / (max_vals - min_vals)
         return normalized_data
+
     def _sample_or_pad_vertices(self, vertices: torch.Tensor, num_points: int) -> torch.Tensor:
         """
         Subsamples or pads the vertices of the model to a fixed number of points.
@@ -170,10 +178,10 @@ class DrivAerNetDataset(Dataset):
             try:
                 return torch.load(load_path)
             except (EOFError, RuntimeError) as e:
-                #logging.error(f"Failed to load point cloud file {load_path}: {e}")
+                # logging.error(f"Failed to load point cloud file {load_path}: {e}")
                 return None
         else:
-            #logging.error(f"Point cloud file {load_path} does not exist or is empty.")
+            # logging.error(f"Point cloud file {load_path} does not exist or is empty.")
             return None
 
     def __getitem__(self, idx: int, apply_augmentations: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -195,13 +203,13 @@ class DrivAerNetDataset(Dataset):
         while True:
             row = self.data_frame.iloc[idx]
             design_id = row['Design']
-            cd_value = row['Average Cd']
+            cd_value = row[self.target]
 
             if self.pointcloud_exist:
                 vertices = self._load_point_cloud(design_id)
-                
+
                 if vertices is None:
-                    #logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
+                    # logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
                     idx = (idx + 1) % len(self.data_frame)
                     continue
             else:
@@ -227,7 +235,8 @@ class DrivAerNetDataset(Dataset):
             self.cache[idx] = (point_cloud_normalized, cd_value)
             return point_cloud_normalized, cd_value
 
-    def split_data(self, train_ratio: float = 0.7, val_ratio: float = 0.15, test_ratio: float = 0.15) -> Tuple[List[int], List[int], List[int]]:
+    def split_data(self, train_ratio: float = 0.7, val_ratio: float = 0.15, test_ratio: float = 0.15) -> Tuple[
+        List[int], List[int], List[int]]:
         """
         Splits the dataset into training, validation, and test sets.
 
@@ -399,6 +408,7 @@ class DrivAerNetDataset(Dataset):
         # Display the plot with all point clouds
         plotter.show()
 
+
 class DrivAerNetGNNDataset(Dataset):
     """
     PyTorch Dataset for loading and processing the DrivAerNet dataset into graph format suitable for GNNs.
@@ -510,7 +520,8 @@ class DrivAerNetGNNDataset(Dataset):
 
         # Highlight nodes as spheres
         nodes = pv_mesh.points
-        plotter.add_points(nodes, color=sns_blue, point_size=5, render_points_as_spheres=True)  # Increase point_size as needed
+        plotter.add_points(nodes, color=sns_blue, point_size=5,
+                           render_points_as_spheres=True)  # Increase point_size as needed
 
         plotter.add_axes()
         camera_position = [(-11.073024242161921, -5.621499358347753, 5.862225824910342),
@@ -540,7 +551,8 @@ class DrivAerNetGNNDataset(Dataset):
         mesh['scalars'] = np.random.rand(mesh.n_points)  # Random colors for nodes
 
         plotter = pv.Plotter()
-        plotter.add_mesh(mesh, show_edges=True, line_width=1, color='white', point_size=8, render_points_as_spheres=True)
+        plotter.add_mesh(mesh, show_edges=True, line_width=1, color='white', point_size=8,
+                         render_points_as_spheres=True)
         plotter.add_scalar_bar('Scalar Values', 'scalars')
 
         # Optional: highlight edges for clarity
@@ -549,7 +561,6 @@ class DrivAerNetGNNDataset(Dataset):
         plotter.add_mesh(lines, color='blue', line_width=2)
 
         plotter.show()
-
 
 # # Example usage
 # if __name__ == '__main__':

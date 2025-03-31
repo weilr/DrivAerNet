@@ -65,7 +65,7 @@ config = {
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'train_test_splits')
+    'subset_dir': os.path.join(proj_path,'splits', 'train_test_splits')
 }
 
 writer = None
