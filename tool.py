@@ -271,4 +271,4 @@ if config['cuda'] and torch.cuda.device_count() > 1:
 model.load_state_dict(torch.load(model_path))
 
 # 打印模型的总结
-summary(model, input_size=(config['batch_size'], 3, 5000))  # 修改 input_size 为你的模型输入形状
+summary(model, input_size=(config['batch_size'], 3, config['num_points']))
