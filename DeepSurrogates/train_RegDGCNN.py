@@ -48,7 +48,7 @@ def gen_model_name(cfg):
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet',
+    'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
     'train_target': 'Cd',
     'cuda': True,
     'seed': 1,
