@@ -92,7 +92,7 @@ We provide instructions on how to use Globus and to download the dataset. Please
 
 DrivAerNet++ serves as a valuable benchmark dataset due to its size and diversity. It provides extensive coverage of various car designs and configurations, making it ideal for testing and validating machine learning models in aerodynamic design. We provide the train, test, and validation splits in the following folder: [train_val_test_splits](https://github.com/Mohamedelrefaie/DrivAerNet/tree/main/train_val_test_splits).
 
-Drag values for the 8k car designs can be found [Here](https://www.dropbox.com/scl/fi/2rtchqnpmzy90uwa9wwny/DrivAerNetPlusPlus_Cd_8k_Updated.csv?rlkey=vjnjurtxfuqr40zqgupnks8sn&st=6dx1mfct&dl=0). 
+Drag values for the 8k car designs can be found [Here](https://www.dropbox.com/scl/fi/2rtchqnpmzy90uwa9wwny/DrivAerNetPlusPlus_Cd_8k_Updated.csv?rlkey=vjnjurtxfuqr40zqgupnks8sn&st=6dx1mfct&dl=0), and the frontal projected areas [Here](https://www.dropbox.com/scl/fi/b7fenj0wmhzqx64bj82t1/DrivAerNetPlusPlus_CarDesign_Areas.csv?rlkey=usbunuupxwmx6g49r9r7dh8zk&st=xcmc3gm7&dl=0).
 
 Researchers and industry practitioners can **submit their models** to the leaderboard to compare performance against state-of-the-art baselines. The benchmark promotes transparency, reproducibility, and innovation in AI-driven aerodynamic modeling.
 
@@ -103,7 +103,7 @@ For submission guidelines and current rankings, visit [DrivAerNet++ Leaderboard]
 
 DrivAerNet++ stands out as the largest and most comprehensive dataset in the field of car design.
 
-![image](https://github.com/Mohamedelrefaie/DrivAerNet/assets/86707575/3c5b33d5-7163-4c33-b734-eeffbb4fb1f0)
+![image](https://github.com/user-attachments/assets/f57fa33a-3c08-4f47-97eb-c76e46bca934)
 
 ## Integration into Scientific Machine Learning (SciML) Frameworks
 
