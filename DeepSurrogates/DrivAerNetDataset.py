@@ -173,7 +173,7 @@ class DrivAerNetDataset(Dataset):
         return vertices
 
     def _load_point_cloud(self, design_id: str) -> Optional[torch.Tensor]:
-        load_path = os.path.join(self.root_dir, f"{design_id}.pt")
+        load_path = os.path.join(self.root_dir,'cache', f"{design_id}_{self.num_points}.pt")
         if os.path.exists(load_path) and os.path.getsize(load_path) > 0:
             try:
                 return torch.load(load_path)
@@ -226,7 +226,7 @@ class DrivAerNetDataset(Dataset):
                 vertices = self._load_point_cloud(design_id)
 
                 if vertices is None:
-                    logging.warning(f"[Dataset] Skipping design {design_id} because point cloud is not found or corrupted.")
+                    # logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
                     idx = (idx + 1) % len(self.data_frame)
                     continue
             else:
@@ -235,7 +235,6 @@ class DrivAerNetDataset(Dataset):
                     mesh = trimesh.load(geometry_path, force='mesh')
                     vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
                     vertices = self._sample_or_pad_vertices(vertices, self.num_points)
-
                 except Exception as e:
                     logging.error(f"[Dataset] Failed to load STL file: {geometry_path}. Error: {e}")
                     raise
