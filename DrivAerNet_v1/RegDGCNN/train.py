@@ -61,7 +61,7 @@ config = {
     'num_workers': 64,
     'optimizer': 'adam',
     # 'channels': [6, 64, 128, 256, 512, 1024],
-    # 'linear_sizes': [128, 64, 32, 16],sq
+    # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNet_v1',
                                'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
