@@ -184,6 +184,10 @@ class DrivAerNetDataset(Dataset):
             # logging.error(f"Point cloud file {load_path} does not exist or is empty.")
             return None
 
+    def _save_point_cloud(self, design_id: str, vertices) -> torch.Tensor:
+        save_path = os.path.join(self.root_dir,'cache', f"{design_id}_{self.num_points}.pt")
+        torch.save(vertices, save_path)
+
     def __getitem__(self, idx: int, apply_augmentations: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Retrieves a sample and its corresponding label from the dataset, with an option to apply augmentations.
@@ -218,6 +222,8 @@ class DrivAerNetDataset(Dataset):
                     mesh = trimesh.load(geometry_path, force='mesh')
                     vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
                     vertices = self._sample_or_pad_vertices(vertices, self.num_points)
+                    self._save_point_cloud(design_id,vertices)
+
                 except Exception as e:
                     logging.error(f"Failed to load STL file: {geometry_path}. Error: {e}")
                     raise
