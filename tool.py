@@ -374,4 +374,4 @@ dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['ae
                             num_points=config['num_points'], target=config['train_target'])
 
 
-dataset.gen_cache()
+dataset.generate_cache()
