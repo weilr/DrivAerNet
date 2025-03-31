@@ -54,7 +54,7 @@ config = {
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
-    'batch_size': 32,
+    'batch_size': 8,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
