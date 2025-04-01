@@ -53,7 +53,7 @@ config = {
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
-    'lr': 0.001,
+    'lr': 0.001*4,
     'batch_size': 8,
     'epochs': 100,
     'dropout': 0.4,
