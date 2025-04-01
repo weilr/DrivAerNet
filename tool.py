@@ -93,46 +93,46 @@ from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
     按照数量分割数据集
 """
 
-import pandas as pd
-import os
-import random
-
-# ======== 配置项 ========
-csv_path = 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'  # CSV路径，含有Design列
-stl_dir = './3DMeshesSTL'      # 存放STL文件的文件夹
-output_dir = './splits/Frontal_Area_splits2800_600_600'        # 输出划分结果目录
-
-train_size, val_size, test_size = 2800, 600, 600
-stl_suffix = '.stl'            # 文件后缀，可改为 .obj 等
-
-# ======== 创建输出文件夹 ========
-os.makedirs(output_dir, exist_ok=True)
-
-# ======== 读取数据并过滤存在的文件 ========
-df = pd.read_csv(csv_path)
-all_designs = df['Design'].dropna().unique().tolist()
-
-# 过滤存在的STL文件
-valid_designs = [d for d in all_designs if os.path.isfile(os.path.join(stl_dir, f'{d}{stl_suffix}'))]
-print(f"总共 {len(all_designs)} 个 Design，其中 {len(valid_designs)} 个有对应的 STL 文件")
-
-# ======== 随机划分数据 ========
-random.shuffle(valid_designs)
-
-train_ids = valid_designs[:train_size]
-val_ids = valid_designs[train_size:train_size + val_size]
-test_ids = valid_designs[train_size + val_size:train_size + val_size + test_size]
-
-# ======== 保存结果 ========
-def save_ids(ids, name):
-    with open(os.path.join(output_dir, f'{name}_design_ids.txt'), 'w') as f:
-        f.write('\n'.join(ids))
-
-save_ids(train_ids, 'train')
-save_ids(val_ids, 'val')
-save_ids(test_ids, 'test')
-
-print(f"[Done] 训练: {len(train_ids)}，验证: {len(val_ids)}，测试: {len(test_ids)}")
+# import pandas as pd
+# import os
+# import random
+#
+# # ======== 配置项 ========
+# csv_path = 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'  # CSV路径，含有Design列
+# stl_dir = './3DMeshesSTL'      # 存放STL文件的文件夹
+# output_dir = './splits/Frontal_Area_splits2800_600_600'        # 输出划分结果目录
+#
+# train_size, val_size, test_size = 2800, 600, 600
+# stl_suffix = '.stl'            # 文件后缀，可改为 .obj 等
+#
+# # ======== 创建输出文件夹 ========
+# os.makedirs(output_dir, exist_ok=True)
+#
+# # ======== 读取数据并过滤存在的文件 ========
+# df = pd.read_csv(csv_path)
+# all_designs = df['Design'].dropna().unique().tolist()
+#
+# # 过滤存在的STL文件
+# valid_designs = [d for d in all_designs if os.path.isfile(os.path.join(stl_dir, f'{d}{stl_suffix}'))]
+# print(f"总共 {len(all_designs)} 个 Design，其中 {len(valid_designs)} 个有对应的 STL 文件")
+#
+# # ======== 随机划分数据 ========
+# random.shuffle(valid_designs)
+#
+# train_ids = valid_designs[:train_size]
+# val_ids = valid_designs[train_size:train_size + val_size]
+# test_ids = valid_designs[train_size + val_size:train_size + val_size + test_size]
+#
+# # ======== 保存结果 ========
+# def save_ids(ids, name):
+#     with open(os.path.join(output_dir, f'{name}_design_ids.txt'), 'w') as f:
+#         f.write('\n'.join(ids))
+#
+# save_ids(train_ids, 'train')
+# save_ids(val_ids, 'val')
+# save_ids(test_ids, 'test')
+#
+# print(f"[Done] 训练: {len(train_ids)}，验证: {len(val_ids)}，测试: {len(test_ids)}")
 
 
 """
