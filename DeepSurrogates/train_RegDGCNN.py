@@ -48,13 +48,13 @@ def gen_model_name(cfg):
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_SingleGPU',
+    'exp_name': 'CdPrediction_DrivAerNet',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001*4,
-    'batch_size': 8,
+    'batch_size': 32,
     'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
