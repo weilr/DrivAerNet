@@ -10,7 +10,7 @@ In this part, separate PyVista plots are created to visualize pressure ('p') and
 import pyvista as pv
 
 # Replace this with the actual path to your VTK file containing both 'p' and 'U' data
-vtk_file_path = 'Z:/DrivAerNet++/PressureVTK/E_S_WW_WM_001.vtk'
+vtk_file_path = 'Z:/DrivAerNet/DrivAerNet++/CFDVTK/E_S_WW_WM_001.vtk'
 
 # Load the VTK file
 mesh = pv.read(vtk_file_path)

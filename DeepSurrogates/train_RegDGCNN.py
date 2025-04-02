@@ -33,7 +33,7 @@ from torchinfo import summary
 
 from DeepSurrogates.DeepSurrogate_models import RegDGCNN
 from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
-from DeepSurrogates.trainUtil import init_logger, progress
+from DeepSurrogates.trainUtil import init_logger, progress, EarlyStopping
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.getcwd())
@@ -48,24 +48,24 @@ def gen_model_name(cfg):
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet2800_singleGPU',
+    'exp_name': 'CdPrediction_DrivAerNet',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
     'num_points': 5000,
     'lr': 0.001,
     'batch_size': 8,
-    'epochs': 100,
+    'epochs': 1000,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
-    'num_workers': 16,
-    'optimizer': 'adam',
+    'num_workers': 64,
+    'optimizer': 'adamw',
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits2800_600_600')
+    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
 }
 
 writer = None
@@ -206,12 +206,20 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     train_losses, val_losses = [], []
     training_start_time = time.time()  # Start timing for training
 
-    # Initialize the Adam optimizer
-    optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4) if config['optimizer'] == 'adam' \
-        else optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
+    # # Initialize the Adam optimizer
+    if config['optimizer'].lower() == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=config['lr'], weight_decay=1e-4)
+    elif config['optimizer'].lower() == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
+    # optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4) if config['optimizer'] == 'adam' \
+    #     else optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1, verbose=True,eps=float('1e-15'))
+    early_stopping = EarlyStopping(patience=20, verbose=True)
+    best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity
 
@@ -285,15 +293,22 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         writer.add_scalar("RegDGCNN_R²", val_r2, epoch + 1)
 
         # Check if this is the best model based on MSE
-        if avg_val_loss < best_mse:
-            best_mse = avg_val_loss
-            best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
-            os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
-            torch.save(model.state_dict(), best_model_path)
-            logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
+        # if avg_val_loss < best_mse:
+        #     best_mse = avg_val_loss
+        #     best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
+        #     os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
+        #     torch.save(model.state_dict(), best_model_path)
+        #     logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
 
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
+
+        early_stopping(avg_val_loss,model,best_model_path)
+        if early_stopping.early_stop:
+            logging.info("Early stopping in epoch {}".format(epoch))
+            # 结束模型训练
+            break
+
 
     training_duration = time.time() - training_start_time
     logging.info(f"Total training time: {training_duration:.2f}s")

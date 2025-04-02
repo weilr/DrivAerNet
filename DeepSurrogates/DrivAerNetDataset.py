@@ -580,17 +580,19 @@ class DrivAerNetGNNDataset(Dataset):
         plotter.show()
 
 # # Example usage
-# if __name__ == '__main__':
-#     dataset = DrivAerNetDataset(root_dir='../DrivAerNetPlusPlus_combined_all',
-#                                 csv_file='../Combined_AeroCoefficients_DrivAerNet.csv',
-#                                 num_points=100000,
-#                                 pointcloud_exist=False  # Set to False if point clouds do not exist as .pt files
-#                                 )
-#
-#     dataset.visualize_mesh_with_node(10)  # Visualize the mesh with nodes of the 300th sample
-#
-#     dataset.visualize_point_cloud(10)  # Visualize the point cloud of the 300th sample
-#
-#     # Splitting data into train, validation, and test sets
-#     #train_indices, val_indices, test_indices = dataset.split_data()
-#     #logging.info(f"Train size: {len(train_indices)}, Validation size: {len(val_indices)}, Test size: {len(test_indices)}")
+if __name__ == '__main__':
+    dataset = DrivAerNetDataset(root_dir='../3DMeshesSTL',
+                                csv_file='../DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv',
+                                num_points=100000,
+                                pointcloud_exist=False  # Set to False if point clouds do not exist as .pt files
+                                )
+
+    dataset.visualize_mesh_with_node(10)  # Visualize the mesh with nodes of the 300th sample
+
+    dataset.visualize_point_cloud(10)  # Visualize the point cloud of the 300th sample
+    dataset.visualize_augmentations(10)
+    dataset.visualize_mesh(10)
+
+    # Splitting data into train, validation, and test sets
+    #train_indices, val_indices, test_indices = dataset.split_data()
+    #logging.info(f"Train size: {len(train_indices)}, Validation size: {len(val_indices)}, Test size: {len(test_indices)}")
