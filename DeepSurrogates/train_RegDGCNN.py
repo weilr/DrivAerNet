@@ -217,8 +217,8 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     #     else optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.1, verbose=True,eps=float('1e-15'))
-    early_stopping = EarlyStopping(patience=20, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=8, factor=0.1, verbose=True, eps=float('1e-15'))
+    early_stopping = EarlyStopping(patience=25, verbose=True)
     best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity
@@ -303,12 +303,11 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
 
-        early_stopping(avg_val_loss,model,best_model_path)
+        early_stopping(avg_val_loss, model, best_model_path)
         if early_stopping.early_stop:
             logging.info("Early stopping in epoch {}".format(epoch))
             # 结束模型训练
             break
-
 
     training_duration = time.time() - training_start_time
     logging.info(f"Total training time: {training_duration:.2f}s")
