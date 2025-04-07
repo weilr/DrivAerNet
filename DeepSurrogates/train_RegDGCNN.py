@@ -55,7 +55,7 @@ config = {
     'num_points': 5000,
     'lr': 0.001,
     'batch_size': 32,
-    'epochs': 1000,
+    'epochs': 100,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
