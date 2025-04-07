@@ -48,7 +48,7 @@ def gen_model_name(cfg):
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet_old2800',
+    'exp_name': 'CdPrediction_DrivAerNet_old5600',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
@@ -65,7 +65,7 @@ config = {
     # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'old2800')
+    'subset_dir': os.path.join(proj_path, 'splits', 'old5600')
 }
 
 writer = None
