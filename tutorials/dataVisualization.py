@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Load the dataset
-file_path = '../DrivAerNet_v1/AeroCoefficients_DrivAerNet_FilteredCorrected.csv'
+file_path = '../AeroCoefficients_DrivAerNet_FilteredCorrected.csv'
 data = pd.read_csv(file_path)
 
 # Set the aesthetic style of the plots

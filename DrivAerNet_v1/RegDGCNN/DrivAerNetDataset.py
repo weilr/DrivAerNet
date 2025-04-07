@@ -375,8 +375,8 @@ class DrivAerNetDataset(Dataset):
 # Example usage
 if __name__ == '__main__':
     dataset = DrivAerNetDataset(root_dir='../../3DMeshesSTL',
-                                    csv_file='../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
-                                    num_points=500000)
+                                csv_file='../../AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv',
+                                num_points=500000)
 
     dataset.visualize_mesh_withNode(300)  # Visualize the mesh of the first sample
 
