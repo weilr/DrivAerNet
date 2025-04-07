@@ -1,13 +1,11 @@
 """
     csv_prefix_remove
 """
-import os.path
-
-import pandas as pd
-from fontTools.subset import subset
-
-from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
-
+# import os.path
+#
+# import pandas as pd
+# from fontTools.subset import subset
+#
 # # 读取 CSV
 # df = pd.read_csv('AeroCoefficients_DrivAerNet_FilteredCorrected.csv')
 #
@@ -16,6 +14,29 @@ from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
 #
 # # 保存
 # df.to_csv('AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv', index=False)
+
+
+"""
+    txt prefix remove
+"""
+# from pathlib import Path
+#
+# def remove_prefix_from_file(file_path):
+#     # 使用 pathlib.Path 对象来处理文件路径
+#     file = Path(file_path)
+#
+#     # 读取并处理文件
+#     updated_lines = [
+#         line[8:] if line.startswith('DrivAer_') else line
+#         for line in file.read_text().splitlines()  # 读取文件并按行分割
+#     ]
+#
+#     # 写回更新后的内容
+#     file.write_text("\n".join(updated_lines) + "\n")  # 重新写回文件
+#
+# # 你可以调用这个函数来处理你的文件
+# file_path = 'splits/old5600/test_design_ids.txt'  # 替换成你的文件路径
+# remove_prefix_from_file(file_path)
 
 """
     移动文件夹
@@ -373,5 +394,120 @@ from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
 # dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
 #                             num_points=config['num_points'], target=config['train_target'])
 #
-#
 # dataset.generate_cache()
+
+
+"""
+    保存vtk文件
+"""
+#
+# import pyvista as pv
+# import torch
+# import numpy as np
+# import os
+#
+#
+# def vtk_to_pytorch_tensor(vtk_file_path, output_pt_file):
+#     """
+#     读取VTK文件中的所有数据并保存到PyTorch的tensor格式文件中
+#
+#     参数:
+#     vtk_file_path: VTK文件路径
+#     output_pt_file: 输出的PyTorch tensor文件路径
+#     """
+#     # 读取VTK文件
+#     mesh = pv.read(vtk_file_path)
+#
+#     # 创建一个字典来存储所有数据
+#     data_dict = {}
+#
+#     # 保存点数据
+#     data_dict['points'] = torch.tensor(mesh.points, dtype=torch.float32)
+#
+#     # 保存单元数据(如果有)
+#     if mesh.cells is not None:
+#         data_dict['cells'] = torch.tensor(mesh.cells, dtype=torch.int64)
+#
+#     # 保存点属性数据
+#     for key in mesh.point_data:
+#         data_dict[f'point_data_{key}'] = torch.tensor(mesh.point_data[key], dtype=torch.float32)
+#
+#     # 保存单元属性数据
+#     for key in mesh.cell_data:
+#         data_dict[f'cell_data_{key}'] = torch.tensor(mesh.cell_data[key], dtype=torch.float32)
+#
+#     # 保存场数据
+#     for key in mesh.field_data:
+#         data_dict[f'field_data_{key}'] = torch.tensor(mesh.field_data[key], dtype=torch.float32)
+#
+#     # 添加网格类型信息（作为字符串）
+#     data_dict['mesh_type'] = str(type(mesh).__name__)
+#
+#     # 保存为PyTorch tensor文件
+#     torch.save(data_dict, output_pt_file)
+#
+#     print(f"已保存以下数据到 {output_pt_file}:")
+#     for key, value in data_dict.items():
+#         if isinstance(value, torch.Tensor):
+#             print(f" - {key}: {value.shape} (dtype: {value.dtype})")
+#         else:
+#             print(f" - {key}: {value}")
+#
+#     return data_dict
+#
+# if __name__ == '__main__':
+#
+#     path = 'Z:/DrivAerNet/DrivAerNet++/CFDVTK'
+#     save_path = 'Z:/DrivAerNet/DrivAerNet++/CFDVTK_pt'
+#     file_name = 'E_S_WW_WM_001'
+#     vtk_file = os.path.join(path, f'{file_name}.vtk')  # 替换为你的 VTK 文件路径
+#     output_file = os.path.join(save_path, f'{file_name}.pt')  # 替换为你想要保存的 .pt 文件路径
+#
+#     data_dict = vtk_to_pytorch_tensor(vtk_file, output_file)
+#
+#     # 测试读取保存的数据
+#     loaded_data = torch.load(output_file)
+#     print("\n成功读取保存的数据:")
+#     for key in loaded_data:
+#         if isinstance(loaded_data[key], torch.Tensor):
+#             print(f" - {key}: {loaded_data[key].shape}")
+#         else:
+#             print(f" - {key}: {loaded_data[key]}")
+
+
+"""
+    合并
+"""
+
+import pandas as pd
+
+# 读取txt文件并合并
+file1 = 'splits/old5600/test_design_ids.txt'
+file2 = 'splits/old5600/train_design_ids.txt'
+file3 = 'splits/old5600/val_design_ids.txt'
+
+with open(file1, 'r') as f1, open(file2, 'r') as f2, open(file3, 'r') as f3:
+    content = f1.readlines() + f2.readlines() + f3.readlines()
+
+with open(file1, 'r') as f1, open(file2, 'r') as f2, open(file3, 'r') as f3:
+    content = f1.readlines() + f2.readlines() + f3.readlines()
+
+# 清洗和合并内容（去除可能的空行）
+content = [line.strip() for line in content if line.strip()]
+
+# 读取CSV文件并提取Design列
+csv_file = 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'
+df = pd.read_csv(csv_file)
+
+# 判断合并后的txt文件内容是否存在于Design列
+design_column = df['Design'].astype(str)  # 确保列为字符串格式
+matches = [line for line in content if line in design_column.values]
+no_matches = [line for line in content if line not in design_column.values]
+
+# 打印没有匹配的内容并计数
+if no_matches:
+    print(f"以下内容没有在CSV文件的Design列中找到匹配（共{len(no_matches)}条）：")
+    for line in no_matches:
+        print(line)
+else:
+    print("所有内容都在CSV文件的Design列中找到了匹配。")

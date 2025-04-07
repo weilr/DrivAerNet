@@ -48,7 +48,7 @@ def gen_model_name(cfg):
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet',
+    'exp_name': 'CdPrediction_DrivAerNet_old2800',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
@@ -60,12 +60,12 @@ config = {
     'emb_dims': 512,
     'k': 40,
     'num_workers': 64,
-    'optimizer': 'adamw',
+    'optimizer': 'adam',
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
+    'subset_dir': os.path.join(proj_path, 'splits', 'old2800')
 }
 
 writer = None
@@ -213,13 +213,12 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4)
     else:
         optimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
-    # optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=1e-4) if config['optimizer'] == 'adam' \
-    #     else optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=8, factor=0.1, verbose=True, eps=float('1e-15'))
+    # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=8, factor=0.1, verbose=True, eps=float('1e-15'))
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
     early_stopping = EarlyStopping(patience=25, verbose=True)
-    best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
+    # best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity
 
@@ -247,7 +246,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         # Calculate and print the average training loss for the epoch
         avg_loss = total_loss / len(train_dataloader)
         train_losses.append(avg_loss)
-        logging.info(f"[Epoch {epoch + 1}] Training Loss: {avg_loss:.6f} Time: {epoch_duration:.2f}s")
+        logging.info(f"[Epoch {epoch + 1}] Training Loss: {avg_loss:.8f} Time: {epoch_duration:.2f}s")
 
         # Validation phase
         model.eval()  # Set the model to evaluation mode
@@ -286,28 +285,28 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         val_r2 = r2_score(all_preds, all_targets)
         # print(f"Validation R²: {val_r2:.4f}")
         logging.info(
-            f"[Epoch {epoch + 1}] Validation Loss: {avg_val_loss:.4f}, Validation R^2: {val_r2:.4f}, Learning rate:{optimizer.param_groups[0]['lr']}"
+            f"[Epoch {epoch + 1}] Validation Loss: {avg_val_loss:.8f}, Validation R^2: {val_r2:.8f}, Learning rate:{optimizer.param_groups[0]['lr']}"
             f" Avg Inference Time: {avg_inference_time:.4f}s.")
 
         writer.add_scalars("RegDGCNN_Loss", {'train': avg_loss, 'test': avg_val_loss}, epoch + 1)
         writer.add_scalar("RegDGCNN_R²", val_r2, epoch + 1)
 
         # Check if this is the best model based on MSE
-        # if avg_val_loss < best_mse:
-        #     best_mse = avg_val_loss
-        #     best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
-        #     os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
-        #     torch.save(model.state_dict(), best_model_path)
-        #     logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
+        if avg_val_loss < best_mse:
+            best_mse = avg_val_loss
+            best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
+            os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
+            torch.save(model.state_dict(), best_model_path)
+            logging.info(f"New best model saved with MSE: {best_mse:.6f} and R^2: {val_r2:.4f}")
 
         # Step the scheduler based on the validation loss
         scheduler.step(avg_val_loss)
 
-        early_stopping(avg_val_loss, model, best_model_path)
-        if early_stopping.early_stop:
-            logging.info("Early stopping in epoch {}".format(epoch))
-            # 结束模型训练
-            break
+        # early_stopping(avg_val_loss, model, best_model_path)
+        # if early_stopping.early_stop:
+        #     logging.info("Early stopping in epoch {}".format(epoch))
+        #     # 结束模型训练
+        #     break
 
     training_duration = time.time() - training_start_time
     logging.info(f"Total training time: {training_duration:.2f}s")
@@ -374,7 +373,7 @@ def test_model(model: torch.nn.Module, test_dataloader: DataLoader, config: dict
     avg_mae = total_mae / len(test_dataloader)
 
     # Output test results
-    logging.info(f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {test_r2:.4f}")
+    logging.info(f"Test MSE: {avg_mse:.8f}, Test MAE: {avg_mae:.8f}, Max MAE: {max_mae:.8f}, Test R²: {test_r2:.8f}")
     logging.info(f"Total inference time: {total_inference_time:.2f}s for {total_samples} samples")
 
 
