@@ -224,9 +224,8 @@ class DrivAerNetDataset(Dataset):
 
             if self.pointcloud_exist:
                 vertices = self._load_point_cloud(design_id)
-
                 if vertices is None:
-                    # logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
+                    logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
                     idx = (idx + 1) % len(self.data_frame)
                     continue
             else:
