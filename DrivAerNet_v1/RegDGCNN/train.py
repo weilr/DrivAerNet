@@ -173,9 +173,9 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
             raise FileNotFoundError(f"Error loading subset file {ids_file}: {e}")
 
     # Create each subset using the corresponding subset file
-    train_dataset = create_subset(full_dataset, 'train_design_ids.txt')
-    val_dataset = create_subset(full_dataset, 'val_design_ids.txt')
-    test_dataset = create_subset(full_dataset, 'test_design_ids.txt')
+    train_dataset = create_subset(full_dataset, 'train_design_ids_bak.txt')
+    val_dataset = create_subset(full_dataset, 'val_design_ids_bak.txt')
+    test_dataset = create_subset(full_dataset, 'test_design_ids_bak.txt')
 
     # Initialize DataLoaders for each subset
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,

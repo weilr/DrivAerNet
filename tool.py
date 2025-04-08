@@ -35,7 +35,7 @@
 #     file.write_text("\n".join(updated_lines) + "\n")  # 重新写回文件
 #
 # # 你可以调用这个函数来处理你的文件
-# file_path = 'splits/old5600/test_design_ids.txt'  # 替换成你的文件路径
+# file_path = 'splits/old2800/test_design_ids.txt'  # 替换成你的文件路径
 # remove_prefix_from_file(file_path)
 
 """
@@ -101,9 +101,9 @@
 # if not os.path.exists(outpath):
 #     os.makedirs(outpath)
 # # 将Design列保存为txt文件
-# train_data[['Design']].to_csv(os.path.join(outpath, 'train_design_ids.txt'), header=False, index=False, sep='\t')
-# val_data[['Design']].to_csv(os.path.join(outpath, 'val_design_ids.txt'), header=False, index=False, sep='\t')
-# test_data[['Design']].to_csv(os.path.join(outpath, 'test_design_ids.txt'), header=False, index=False, sep='\t')
+# train_data[['Design']].to_csv(os.path.join(outpath, 'train_design_ids_bak.txt'), header=False, index=False, sep='\t')
+# val_data[['Design']].to_csv(os.path.join(outpath, 'val_design_ids_bak.txt'), header=False, index=False, sep='\t')
+# test_data[['Design']].to_csv(os.path.join(outpath, 'test_design_ids_bak.txt'), header=False, index=False, sep='\t')
 #
 # # 输出分割后文件的信息
 # print(f"训练集: {train_data.shape[0]}条数据")
@@ -186,7 +186,7 @@
 # import shutil
 #
 # # 读取txt文件
-# txt_file = 'train_test_splits/val_design_ids.txt'  # 替换为你的txt文件路径
+# txt_file = 'train_test_splits/val_design_ids_bak.txt'  # 替换为你的txt文件路径
 # source_folder = 'D:/Environment/PyCharmProject/DrivAerNet/3DMeshesSTL'  # 替换为源文件夹路径
 # destination_folder = 'D:/Environment/PyCharmProject/TestData'  # 替换为目标文件夹路径
 #
@@ -237,11 +237,11 @@
 #     print(file)
 #
 # subset_ids = []
-# with open("train_test_splits/test_design_ids.txt", 'r') as file:
+# with open("train_test_splits/test_design_ids_bak.txt", 'r') as file:
 #     subset_ids = file.read().split()
-# with open("train_test_splits/train_design_ids.txt", 'r') as file:
+# with open("train_test_splits/train_design_ids_bak.txt", 'r') as file:
 #     subset_ids += file.read().split()
-# with open("train_test_splits/val_design_ids.txt", 'r') as file:
+# with open("train_test_splits/val_design_ids_bak.txt", 'r') as file:
 #     subset_ids += file.read().split()
 #
 # missing_files = []
@@ -478,36 +478,79 @@
 """
     合并
 """
-
+import os
+import shutil
 import pandas as pd
 
-# 读取txt文件并合并
-file1 = 'splits/old5600/test_design_ids.txt'
-file2 = 'splits/old5600/train_design_ids.txt'
-file3 = 'splits/old5600/val_design_ids.txt'
-
-with open(file1, 'r') as f1, open(file2, 'r') as f2, open(file3, 'r') as f3:
-    content = f1.readlines() + f2.readlines() + f3.readlines()
-
-with open(file1, 'r') as f1, open(file2, 'r') as f2, open(file3, 'r') as f3:
-    content = f1.readlines() + f2.readlines() + f3.readlines()
-
-# 清洗和合并内容（去除可能的空行）
-content = [line.strip() for line in content if line.strip()]
-
 # 读取CSV文件并提取Design列
-csv_file = 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'
+csv_file = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
 df = pd.read_csv(csv_file)
-
-# 判断合并后的txt文件内容是否存在于Design列
 design_column = df['Design'].astype(str)  # 确保列为字符串格式
-matches = [line for line in content if line in design_column.values]
-no_matches = [line for line in content if line not in design_column.values]
 
-# 打印没有匹配的内容并计数
-if no_matches:
-    print(f"以下内容没有在CSV文件的Design列中找到匹配（共{len(no_matches)}条）：")
-    for line in no_matches:
-        print(line)
+# 3DMeshesSTL文件夹路径
+stl_folder = './3DMeshesSTL'
+
+
+# 定义一个函数来处理每个txt文件
+def process_txt_file(file_path, file_name):
+    file_full_path = os.path.join(file_path, file_name)
+
+    with open(file_full_path, 'r') as file:
+        lines = file.readlines()
+
+    # 初始化删除记录
+    deleted_files = []
+
+    # 删除不在Design列中的行，或者.stl文件不存在的行
+    filtered_lines = []
+    for line in lines:
+        line = line.strip()
+        if line in design_column.values:
+            stl_file = f"{line}.stl"  # 假设txt中每一行是.stl文件的名称（不带路径）
+            stl_path = os.path.join(stl_folder, stl_file)
+            if not os.path.exists(stl_path):  # 如果该.stl文件不存在
+                deleted_files.append(line)  # 记录被删除的文件名
+            else:
+                filtered_lines.append(line)
+        else:
+            deleted_files.append(line)  # 记录被删除的文件名
+
+    # 将结果保存到新的文件（覆盖原文件）
+    with open(file_full_path, 'w') as file:
+        for line in filtered_lines:
+            file.write(line + '\n')
+
+    # 返回删除的文件名和个数
+    return deleted_files
+
+
+# 处理三个txt文件并统计删除的文件
+deleted_files_all = []
+# 假设输入文件路径和文件名是以元组的形式给出的，例如（path, filename）
+path ='splits/old2800/'
+files = [
+    (path, 'test_design_ids.txt'),
+    (path, 'train_design_ids.txt'),
+    (path, 'val_design_ids.txt')
+]
+
+for path, file in files:
+    # 备份原文件
+    backup_file = f"{file}.bak"
+    backup_path = os.path.join(path, backup_file)
+    shutil.copy(os.path.join(path, file), backup_path)
+    print(f"{file} 已备份为 {backup_file}")
+
+    # 处理文件并获取删除记录
+    deleted_files = process_txt_file(path, file)
+    deleted_files_all.extend(deleted_files)  # 合并所有删除的文件
+    print(f'{file} 处理完成，已保存为原文件名')
+
+# 输出删除的文件统计
+if deleted_files_all:
+    print(f"\n总共删除了 {len(deleted_files_all)} 个文件：")
+    for deleted_file in deleted_files_all:
+        print(deleted_file)
 else:
-    print("所有内容都在CSV文件的Design列中找到了匹配。")
+    print("没有删除任何文件。")
+
