@@ -63,7 +63,7 @@ config = {
     # 'channels': [6, 64, 128, 256, 512, 1024],
     # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join(proj_path, 'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'),
     'subset_dir': os.path.join(proj_path, 'splits', 'old5600')
 }
 
