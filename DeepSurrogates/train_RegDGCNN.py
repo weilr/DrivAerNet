@@ -218,7 +218,7 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
     scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True, eps=float('1e-15'))
     # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
     early_stopping = EarlyStopping(patience=60, verbose=True)
-    # best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
+    best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity
 
