@@ -50,7 +50,7 @@ config = {
     'num_points': 5000,
     'lr': 0.001,
     'batch_size': 32,
-    'epochs': 10000,
+    'epochs': 5000,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
@@ -215,9 +215,9 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         optimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5, verbose=True, eps=float('1e-15'))
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=15, factor=0.5, verbose=True, eps=float('1e-15'))
     # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
-    early_stopping = EarlyStopping(patience=50, verbose=True)
+    early_stopping = EarlyStopping(patience=60, verbose=True)
     best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity
