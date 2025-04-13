@@ -41,11 +41,6 @@ else:
     proj_path = os.getcwd()
 os.chdir(os.getcwd())
 
-
-def gen_model_name(cfg):
-    return f"{cfg['exp_name']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
-
-
 # Configuration dictionary to hold hyperparameters and settings
 config = {
     'exp_name': 'CdPrediction_DrivAerNet2800',
@@ -75,7 +70,9 @@ device = None
 
 def init():
     global writer, final_model_path, device
-    init_logger(os.path.join(proj_path, 'logs'))
+    config['exp_name'] = gen_model_name(config)
+
+    init_logger(os.path.join(proj_path, 'logs'), f'{config["exp_name"]}.log')
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
 
     # Set the device for training
@@ -90,12 +87,15 @@ def init():
         logging.info(f"    {k.ljust(max_key_len)} : {v}")
 
     if final_model_path is None:
-        config['exp_name'] = gen_model_name(config)
         final_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_final_model.pth')
     if writer is None:
         logdir = os.path.join(proj_path, 'runs', f'{config["exp_name"]}')
         logging.info(f"[Main] Initializing TensorBoard at {logdir}")
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
+
+
+def gen_model_name(cfg):
+    return f"{cfg['exp_name']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
 
 
 def setup_seed(seed: int):

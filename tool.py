@@ -1,6 +1,7 @@
 """
     csv_prefix_remove
 """
+
 # import os.path
 #
 # import pandas as pd
@@ -362,39 +363,41 @@
 """
     缓存数据
 """
-# import platform
-#
-# if platform.system() == "Windows":
-#     proj_path = os.getcwd()
-# else:
-#     proj_path = os.getcwd()
-# os.chdir(os.getcwd())
-#
-# config = {
-#     'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
-#     'train_target': 'Cd',
-#     'cuda': True,
-#     'seed': 1,
-#     'num_points': 10000,
-#     'lr': 0.001,
-#     'batch_size': 32,
-#     'epochs': 100,
-#     'dropout': 0.4,
-#     'emb_dims': 512,
-#     'k': 40,
-#     'num_workers': 64,
-#     'optimizer': 'adam',
-#     # 'channels': [6, 64, 128, 256, 512, 1024],
-#     # 'linear_sizes': [128, 64, 32, 16],
-#     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-#     'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-#     'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
-# }
-#
-# dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
-#                             num_points=config['num_points'], target=config['train_target'])
-#
-# dataset.generate_cache()
+import platform
+import os
+from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
+
+if platform.system() == "Windows":
+    proj_path = os.getcwd()
+else:
+    proj_path = os.getcwd()
+os.chdir(os.getcwd())
+
+config = {
+    'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
+    'train_target': 'Cd',
+    'cuda': True,
+    'seed': 1,
+    'num_points': 10000,
+    'lr': 0.001,
+    'batch_size': 32,
+    'epochs': 100,
+    'dropout': 0.4,
+    'emb_dims': 512,
+    'k': 40,
+    'num_workers': 24,
+    'optimizer': 'adam',
+    # 'channels': [6, 64, 128, 256, 512, 1024],
+    # 'linear_sizes': [128, 64, 32, 16],
+    'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
+    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
+    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
+}
+
+dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
+                            num_points=config['num_points'], target=config['train_target'])
+
+dataset.generate_cache()
 
 
 """
@@ -478,79 +481,79 @@
 """
     合并
 """
-import os
-import shutil
-import pandas as pd
-
-# 读取CSV文件并提取Design列
-csv_file = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
-df = pd.read_csv(csv_file)
-design_column = df['Design'].astype(str)  # 确保列为字符串格式
-
-# 3DMeshesSTL文件夹路径
-stl_folder = './3DMeshesSTL'
-
-
-# 定义一个函数来处理每个txt文件
-def process_txt_file(file_path, file_name):
-    file_full_path = os.path.join(file_path, file_name)
-
-    with open(file_full_path, 'r') as file:
-        lines = file.readlines()
-
-    # 初始化删除记录
-    deleted_files = []
-
-    # 删除不在Design列中的行，或者.stl文件不存在的行
-    filtered_lines = []
-    for line in lines:
-        line = line.strip()
-        if line in design_column.values:
-            stl_file = f"{line}.stl"  # 假设txt中每一行是.stl文件的名称（不带路径）
-            stl_path = os.path.join(stl_folder, stl_file)
-            if not os.path.exists(stl_path):  # 如果该.stl文件不存在
-                deleted_files.append(line)  # 记录被删除的文件名
-            else:
-                filtered_lines.append(line)
-        else:
-            deleted_files.append(line)  # 记录被删除的文件名
-
-    # 将结果保存到新的文件（覆盖原文件）
-    with open(file_full_path, 'w') as file:
-        for line in filtered_lines:
-            file.write(line + '\n')
-
-    # 返回删除的文件名和个数
-    return deleted_files
-
-
-# 处理三个txt文件并统计删除的文件
-deleted_files_all = []
-# 假设输入文件路径和文件名是以元组的形式给出的，例如（path, filename）
-path ='splits/old2800/'
-files = [
-    (path, 'test_design_ids.txt'),
-    (path, 'train_design_ids.txt'),
-    (path, 'val_design_ids.txt')
-]
-
-for path, file in files:
-    # 备份原文件
-    backup_file = f"{file}.bak"
-    backup_path = os.path.join(path, backup_file)
-    shutil.copy(os.path.join(path, file), backup_path)
-    print(f"{file} 已备份为 {backup_file}")
-
-    # 处理文件并获取删除记录
-    deleted_files = process_txt_file(path, file)
-    deleted_files_all.extend(deleted_files)  # 合并所有删除的文件
-    print(f'{file} 处理完成，已保存为原文件名')
-
-# 输出删除的文件统计
-if deleted_files_all:
-    print(f"\n总共删除了 {len(deleted_files_all)} 个文件：")
-    for deleted_file in deleted_files_all:
-        print(deleted_file)
-else:
-    print("没有删除任何文件。")
-
+# import os
+# import shutil
+# import pandas as pd
+#
+# # 读取CSV文件并提取Design列
+# csv_file = 'DrivAerNetPlusPlus_Cd_8k_Updated.csv'
+# df = pd.read_csv(csv_file)
+# design_column = df['Design'].astype(str)  # 确保列为字符串格式
+#
+# # 3DMeshesSTL文件夹路径
+# stl_folder = './3DMeshesSTL'
+#
+#
+# # 定义一个函数来处理每个txt文件
+# def process_txt_file(file_path, file_name):
+#     file_full_path = os.path.join(file_path, file_name)
+#
+#     with open(file_full_path, 'r') as file:
+#         lines = file.readlines()
+#
+#     # 初始化删除记录
+#     deleted_files = []
+#
+#     # 删除不在Design列中的行，或者.stl文件不存在的行
+#     filtered_lines = []
+#     for line in lines:
+#         line = line.strip()
+#         if line in design_column.values:
+#             stl_file = f"{line}.stl"  # 假设txt中每一行是.stl文件的名称（不带路径）
+#             stl_path = os.path.join(stl_folder, stl_file)
+#             if not os.path.exists(stl_path):  # 如果该.stl文件不存在
+#                 deleted_files.append(line)  # 记录被删除的文件名
+#             else:
+#                 filtered_lines.append(line)
+#         else:
+#             deleted_files.append(line)  # 记录被删除的文件名
+#
+#     # 将结果保存到新的文件（覆盖原文件）
+#     with open(file_full_path, 'w') as file:
+#         for line in filtered_lines:
+#             file.write(line + '\n')
+#
+#     # 返回删除的文件名和个数
+#     return deleted_files
+#
+#
+# # 处理三个txt文件并统计删除的文件
+# deleted_files_all = []
+# # 假设输入文件路径和文件名是以元组的形式给出的，例如（path, filename）
+# path ='splits/old2800/'
+# files = [
+#     (path, 'test_design_ids.txt'),
+#     (path, 'train_design_ids.txt'),
+#     (path, 'val_design_ids.txt')
+# ]
+#
+# for path, file in files:
+#     # 备份原文件
+#     backup_file = f"{file}.bak"
+#     backup_path = os.path.join(path, backup_file)
+#     shutil.copy(os.path.join(path, file), backup_path)
+#     print(f"{file} 已备份为 {backup_file}")
+#
+#     # 处理文件并获取删除记录
+#     deleted_files = process_txt_file(path, file)
+#     deleted_files_all.extend(deleted_files)  # 合并所有删除的文件
+#     print(f'{file} 处理完成，已保存为原文件名')
+#
+# # 输出删除的文件统计
+# if deleted_files_all:
+#     print(f"\n总共删除了 {len(deleted_files_all)} 个文件：")
+#     for deleted_file in deleted_files_all:
+#         print(deleted_file)
+# else:
+#     print("没有删除任何文件。")
+#

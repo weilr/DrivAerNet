@@ -8,12 +8,11 @@ import torch
 from tqdm import tqdm
 
 
-def init_logger(log_dir: str):
+def init_logger(log_dir: str, log_name: str):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_path = os.path.join(log_dir, f'run_{timestamp}.log')
+    log_path = os.path.join(log_dir, log_name)
 
     # 设置 logger
     logger = logging.getLogger()

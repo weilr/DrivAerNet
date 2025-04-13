@@ -22,6 +22,13 @@ import seaborn as sns
 from typing import Callable, Optional, Tuple, List
 from torch_geometric.data import Data
 
+import os
+import logging
+import trimesh
+import torch
+import concurrent.futures
+from tqdm import tqdm
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -173,7 +180,7 @@ class DrivAerNetDataset(Dataset):
         return vertices
 
     def _load_point_cloud(self, design_id: str) -> Optional[torch.Tensor]:
-        load_path = os.path.join(self.root_dir,'cache', f"{design_id}_{self.num_points}.pt")
+        load_path = os.path.join(self.root_dir, 'cache', f"{design_id}_{self.num_points}.pt")
         if os.path.exists(load_path) and os.path.getsize(load_path) > 0:
             try:
                 return torch.load(load_path)
@@ -184,22 +191,83 @@ class DrivAerNetDataset(Dataset):
             logging.error(f"[Dataset] Point cloud file {load_path} does not exist or is empty.")
             return None
 
+    def _load_mesh_vertices(self, design_id: str) -> Optional[torch.Tensor]:
+        geometry_path = os.path.join(self.root_dir, f"{design_id}.stl")
+        try:
+            mesh = trimesh.load(geometry_path, force='mesh')
+            vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
+            vertices = self._sample_or_pad_vertices(vertices, self.num_points)
+        except Exception as e:
+            logging.error(f"[Dataset] Failed to load STL file: {geometry_path}. Error: {e}")
+            raise
+        return vertices
+
     def _save_point_cloud(self, design_id: str, vertices) -> torch.Tensor:
         save_path = os.path.join(self.root_dir, 'cache', f"{design_id}_{self.num_points}.pt")
         torch.save(vertices, save_path)
-        logging.info(f"[Dataset] Saving model at {save_path}")
+        # logging.info(f"[Dataset] Saving model at {save_path}")
+
+    # def generate_cache(self):
+    #     for idx, row in self.data_frame.iterrows():
+    #         geometry_path = os.path.join(self.root_dir, f"{row['Design']}.stl")
+    #         try:
+    #             mesh = trimesh.load(geometry_path, force='mesh')
+    #             vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
+    #             vertices = self._sample_or_pad_vertices(vertices, self.num_points)
+    #             self._save_point_cloud(row['Design'], vertices)
+    #         except Exception as e:
+    #             logging.error(f"[Dataset] Failed to load STL file: {geometry_path}. Error: {e}")
+    #             raise
+
+    def process_single_file(self, args):
+        """处理单个STL文件并生成点云缓存"""
+        design_name, geometry_path, num_points, sample_or_pad_func, save_func = args
+
+        try:
+            mesh = trimesh.load(geometry_path, force='mesh')
+            vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
+            vertices = sample_or_pad_func(vertices, num_points)
+            save_func(design_name, vertices)
+            return True, design_name
+        except Exception as e:
+            return False, f"Failed to load STL file: {geometry_path}. Error: {e}"
 
     def generate_cache(self):
+        """多线程生成点云缓存文件"""
+        # 确定要处理的文件数量
+        total_files = len(self.data_frame)
+
+        # 创建要处理的任务列表
+        tasks = []
         for idx, row in self.data_frame.iterrows():
             geometry_path = os.path.join(self.root_dir, f"{row['Design']}.stl")
-            try:
-                mesh = trimesh.load(geometry_path, force='mesh')
-                vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
-                vertices = self._sample_or_pad_vertices(vertices, self.num_points)
-                self._save_point_cloud(row['Design'], vertices)
-            except Exception as e:
-                logging.error(f"[Dataset] Failed to load STL file: {geometry_path}. Error: {e}")
-                raise
+            tasks.append((
+                row['Design'],
+                geometry_path,
+                self.num_points,
+                self._sample_or_pad_vertices,
+                self._save_point_cloud
+            ))
+
+        # 确定使用的线程数，可以根据CPU核心数自动调整
+        num_workers = min(os.cpu_count(), 28)
+
+        # 使用进度条显示处理进度
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            results = list(tqdm(
+                executor.map(self.process_single_file, tasks),
+                total=total_files,
+                desc="Generating point cloud cache"
+            ))
+
+        # 处理错误结果
+        errors = [result[1] for result in results if not result[0]]
+        if errors:
+            for error in errors:
+                logging.error(f"[Dataset] {error}")
+            raise RuntimeError(f"Failed to process {len(errors)} files. See log for details.")
+
+        logging.info(f"Successfully processed {total_files} STL files.")
 
     def __getitem__(self, idx: int, apply_augmentations: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -225,18 +293,13 @@ class DrivAerNetDataset(Dataset):
             if self.pointcloud_exist:
                 vertices = self._load_point_cloud(design_id)
                 if vertices is None:
-                    logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
-                    idx = (idx + 1) % len(self.data_frame)
-                    continue
+                    vertices = self._load_mesh_vertices(design_id)
+                    if vertices is None:
+                        logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
+                        idx = (idx + 1) % len(self.data_frame)
+                        continue
             else:
-                geometry_path = os.path.join(self.root_dir, f"{design_id}.stl")
-                try:
-                    mesh = trimesh.load(geometry_path, force='mesh')
-                    vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
-                    vertices = self._sample_or_pad_vertices(vertices, self.num_points)
-                except Exception as e:
-                    logging.error(f"[Dataset] Failed to load STL file: {geometry_path}. Error: {e}")
-                    raise
+                vertices = self._load_mesh_vertices(design_id)
 
             if apply_augmentations:
                 vertices = self.augmentation.translate_pointcloud(vertices.numpy())
@@ -578,6 +641,7 @@ class DrivAerNetGNNDataset(Dataset):
 
         plotter.show()
 
+
 # # Example usage
 if __name__ == '__main__':
     dataset = DrivAerNetDataset(root_dir='../3DMeshesSTL',
@@ -593,5 +657,5 @@ if __name__ == '__main__':
     dataset.visualize_mesh(10)
 
     # Splitting data into train, validation, and test sets
-    #train_indices, val_indices, test_indices = dataset.split_data()
-    #logging.info(f"Train size: {len(train_indices)}, Validation size: {len(val_indices)}, Test size: {len(test_indices)}")
+    # train_indices, val_indices, test_indices = dataset.split_data()
+    # logging.info(f"Train size: {len(train_indices)}, Validation size: {len(val_indices)}, Test size: {len(test_indices)}")
