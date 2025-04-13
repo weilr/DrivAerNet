@@ -10,23 +10,19 @@ The module defines two PyTorch Datasets for loading and transforming 3D car mode
 1. DrivAerNetDataset: Handles point cloud data, allowing loading, transforming, and augmenting 3D car models from STL files or existing point clouds.
 2. DrivAerNetGNNDataset: Processes the dataset into graph format suitable for Graph Neural Networks (GNNs).
 """
-import os
+import concurrent.futures
 import logging
-import torch
+import os
+from typing import Callable, Optional, Tuple, List
+
 import numpy as np
 import pandas as pd
-import trimesh
-from torch.utils.data import Dataset, DataLoader, random_split
 import pyvista as pv
 import seaborn as sns
-from typing import Callable, Optional, Tuple, List
-from torch_geometric.data import Data
-
-import os
-import logging
-import trimesh
 import torch
-import concurrent.futures
+import trimesh
+from torch.utils.data import Dataset, random_split
+from torch_geometric.data import Data
 from tqdm import tqdm
 
 # Configure logging
@@ -248,8 +244,6 @@ class DrivAerNetDataset(Dataset):
                 self._sample_or_pad_vertices,
                 self._save_point_cloud
             ))
-
-        # 确定使用的线程数，可以根据CPU核心数自动调整
         num_workers = min(os.cpu_count(), 28)
 
         # 使用进度条显示处理进度
