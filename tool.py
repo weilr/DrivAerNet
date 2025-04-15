@@ -396,7 +396,7 @@ config = {
 
 dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
                             num_points=config['num_points'], target=config['train_target'],
-                            sample_method='farthest')
+                            sample_method='fps_cluster')
 
 dataset.generate_cache()
 
