@@ -43,7 +43,7 @@ os.chdir(os.getcwd())
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet2800',
+    'exp_name': 'CdPrediction_DrivAerNet2800_fps_cluster',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
