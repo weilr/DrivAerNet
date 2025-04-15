@@ -365,41 +365,57 @@
 """
 import platform
 import os
+import argparse
 from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
 
 if platform.system() == "Windows":
     proj_path = os.getcwd()
 else:
     proj_path = os.getcwd()
-os.chdir(os.getcwd())
+os.chdir(proj_path)
 
-config = {
-    'exp_name': 'CdPrediction_DrivAerNet_Unnormalization',
-    'train_target': 'Cd',
-    'cuda': True,
-    'seed': 1,
-    'num_points': 5000,
-    'lr': 0.001,
-    'batch_size': 32,
-    'epochs': 100,
-    'dropout': 0.4,
-    'emb_dims': 512,
-    'k': 40,
-    'num_workers': 24,
-    'optimizer': 'adam',
-    # 'channels': [6, 64, 128, 256, 512, 1024],
-    # 'linear_sizes': [128, 64, 32, 16],
-    'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200')
-}
+def parse_args():
+    parser = argparse.ArgumentParser(description="Script to run DrivAerNet Dataset caching")
+    parser.add_argument('--sample_method', type=str, default='fps_cluster',
+                        choices=['fps_cluster', 'random', 'other_method'], help='Sampling method to use')
+    return parser.parse_args()
 
-dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
-                            num_points=config['num_points'], target=config['train_target'],
-                            sample_method='fps_cluster')
 
-dataset.generate_cache()
+if __name__ == '__main__':
+    args = parse_args()
 
+    config = {
+        'exp_name': 'CdPrediction_DrivAerNet',
+        'train_target': 'Average Cd',
+        'cuda': True,
+        'seed': 1,
+        'num_points': 5000,
+        'lr': 0.001,
+        'batch_size': 32,
+        'epochs': 10000,
+        'dropout': 0.4,
+        'emb_dims': 512,
+        'k': 40,
+        'num_workers': 64,
+        'optimizer': 'adamw',
+        # 'channels': [6, 64, 128, 256, 512, 1024],
+        # 'linear_sizes': [128, 64, 32, 16],
+        'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
+        'aero_coeff': os.path.join(proj_path, 'DrivAerNetPlusPlus_Cd_8k_Frontal_Area.csv'),
+        'subset_dir': os.path.join(proj_path, 'splits', 'Frontal_Area_splits5600_1200_1200'),
+        'sample_method': args.sample_method  # Add sample_method to config
+    }
+
+
+    # Load the dataset and generate cache
+    dataset = DrivAerNetDataset(
+        root_dir=config['dataset_path'],
+        csv_file=config['aero_coeff'],
+        num_points=config['num_points'],
+        target=config['train_target'],
+        sample_method=config['sample_method']  # Pass the sample_method to the dataset
+    )
+    dataset.generate_cache()
 
 """
     保存vtk文件

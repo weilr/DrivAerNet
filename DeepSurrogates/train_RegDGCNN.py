@@ -60,7 +60,8 @@ config = {
     # 'linear_sizes': [128, 64, 32, 16],
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'old2800')
+    'subset_dir': os.path.join(proj_path, 'splits', 'old2800'),
+    'sample_method': 'fps_cluster',
 }
 
 writer = None
@@ -95,7 +96,7 @@ def init():
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
 
-def gen_model_name(cfg,timestamp):
+def gen_model_name(cfg, timestamp):
     return f"{cfg['exp_name']}_{timestamp}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
 
 
@@ -147,7 +148,7 @@ def initialize_model(config: dict) -> torch.nn.Module:
 
 
 def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_points: int, batch_size: int,
-                    target: str = 'Average Cd') -> tuple:
+                    target: str = 'Average Cd', sample_method:str ='random') -> tuple:
     """
     Prepare and return the training, validation, and test DataLoader objects.
 
@@ -158,13 +159,14 @@ def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_poi
         num_points (int): The number of points to sample from each point cloud in the dataset.
         batch_size (int): The number of samples per batch to load.
         target(str): Training target.
+        sample_method(str): sample_method.
 
     Returns:
         tuple: A tuple containing the training DataLoader, validation DataLoader, and test DataLoader.
     """
     # Initialize the full dataset
     full_dataset = DrivAerNetDataset(root_dir=dataset_path, csv_file=aero_coeff, num_points=num_points, target=target,
-                                     pointcloud_exist=True)
+                                     pointcloud_exist=True, sample_method=sample_method)
 
     # Helper function to create subsets from IDs in text files
     def create_subset(dataset, ids_file):
@@ -395,7 +397,8 @@ if __name__ == "__main__":
     model = initialize_model(config).to(device)
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config['dataset_path'], config['aero_coeff'],
                                                                         config['subset_dir'], config['num_points'],
-                                                                        config['batch_size'], config['train_target'])
+                                                                        config['batch_size'], config['train_target'],
+                                                                        config['sample_method'])
 
     train_and_evaluate(model, train_dataloader, val_dataloader, config)
 
