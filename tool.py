@@ -376,8 +376,7 @@ os.chdir(proj_path)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Script to run DrivAerNet Dataset caching")
-    parser.add_argument('--sample_method', type=str, default='fps_cluster',
-                        choices=['fps_cluster', 'random', 'other_method'], help='Sampling method to use')
+    parser.add_argument('--sample_method', type=str, default='fps_cluster', help='Sampling method to use')
     return parser.parse_args()
 
 
