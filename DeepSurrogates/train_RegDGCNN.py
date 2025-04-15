@@ -50,7 +50,7 @@ config = {
     'num_points': 5000,
     'lr': 0.001,
     'batch_size': 32,
-    'epochs': 5000,
+    'epochs': 10000,
     'dropout': 0.4,
     'emb_dims': 512,
     'k': 40,
@@ -70,9 +70,10 @@ device = None
 
 def init():
     global writer, final_model_path, device
-    config['exp_name'] = gen_model_name(config)
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    config['exp_name'] = gen_model_name(config, timestamp)
 
-    init_logger(os.path.join(proj_path, 'logs'), f'{config["exp_name"]}.log')
+    init_logger(os.path.join(proj_path, 'logs'), f'run_{timestamp}.log')
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
 
     # Set the device for training
@@ -94,8 +95,8 @@ def init():
         writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
 
-def gen_model_name(cfg):
-    return f"{cfg['exp_name']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
+def gen_model_name(cfg,timestamp):
+    return f"{cfg['exp_name']}_{timestamp}_{cfg['epochs']}epochs_{cfg['num_points']}numPoint_{cfg['dropout']}dropout"
 
 
 def setup_seed(seed: int):

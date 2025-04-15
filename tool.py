@@ -378,7 +378,7 @@ config = {
     'train_target': 'Cd',
     'cuda': True,
     'seed': 1,
-    'num_points': 10000,
+    'num_points': 5000,
     'lr': 0.001,
     'batch_size': 32,
     'epochs': 100,
@@ -395,7 +395,8 @@ config = {
 }
 
 dataset = DrivAerNetDataset(root_dir=config['dataset_path'], csv_file=config['aero_coeff'],
-                            num_points=config['num_points'], target=config['train_target'])
+                            num_points=config['num_points'], target=config['train_target'],
+                            sample_method='farthest')
 
 dataset.generate_cache()
 

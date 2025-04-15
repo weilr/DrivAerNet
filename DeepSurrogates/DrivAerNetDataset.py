@@ -25,6 +25,8 @@ from torch.utils.data import Dataset, random_split
 from torch_geometric.data import Data
 from tqdm import tqdm
 
+from DeepSurrogates.MeshPointSampler import MeshPointSampler
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -98,7 +100,7 @@ class DrivAerNetDataset(Dataset):
     """
 
     def __init__(self, root_dir: str, csv_file: str, num_points: int, transform: Optional[Callable] = None,
-                 pointcloud_exist: bool = False, target: str = 'Average Cd'):
+                 pointcloud_exist: bool = False, target: str = 'Average Cd', sample_method: str = "random"):
         """
         Initializes the DrivAerNetDataset instance.
 
@@ -122,6 +124,8 @@ class DrivAerNetDataset(Dataset):
         self.pointcloud_exist = pointcloud_exist
         self.cache = {}
         self.target = target
+        self.sample_method = sample_method
+        self.MeshPointSampler = MeshPointSampler()
 
     def __len__(self) -> int:
         """Returns the total number of samples in the dataset."""
@@ -168,15 +172,15 @@ class DrivAerNetDataset(Dataset):
         """
         num_vertices = vertices.size(0)
         if num_vertices > num_points:
-            indices = np.random.choice(num_vertices, num_points, replace=False)
-            vertices = vertices[indices]
+            vertices = self.MeshPointSampler.sample(self.sample_method, vertices, num_points)
         elif num_vertices < num_points:
             padding = torch.zeros((num_points - num_vertices, 3), dtype=torch.float32)
             vertices = torch.cat((vertices, padding), dim=0)
         return vertices
 
     def _load_point_cloud(self, design_id: str) -> Optional[torch.Tensor]:
-        load_path = os.path.join(self.root_dir, 'cache', f"{design_id}_{self.num_points}.pt")
+        load_path = os.path.join(self.root_dir, 'cache', f'{self.sample_method}', f'{self.num_points}',
+                                 f"{design_id}.pt")
         if os.path.exists(load_path) and os.path.getsize(load_path) > 0:
             try:
                 return torch.load(load_path)
@@ -199,8 +203,11 @@ class DrivAerNetDataset(Dataset):
         return vertices
 
     def _save_point_cloud(self, design_id: str, vertices) -> torch.Tensor:
-        save_path = os.path.join(self.root_dir, 'cache', f"{design_id}_{self.num_points}.pt")
-        torch.save(vertices, save_path)
+        save_path = os.path.join(self.root_dir, 'cache', f'{self.sample_method}', f'{self.num_points}')
+        save_file = f"{design_id}.pt"
+        os.makedirs(save_path, exist_ok=True)
+
+        torch.save(vertices, os.path.join(save_path, save_file))
         # logging.info(f"[Dataset] Saving model at {save_path}")
 
     # def generate_cache(self):
@@ -244,7 +251,7 @@ class DrivAerNetDataset(Dataset):
                 self._sample_or_pad_vertices,
                 self._save_point_cloud
             ))
-        num_workers = min(os.cpu_count(), 28)
+        num_workers = min(os.cpu_count(), 64)
 
         # 使用进度条显示处理进度
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
