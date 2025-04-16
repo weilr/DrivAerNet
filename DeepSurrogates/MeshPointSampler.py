@@ -1,6 +1,5 @@
-import torch
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+import torch
 
 
 class MeshPointSampler:
@@ -13,9 +12,6 @@ class MeshPointSampler:
         self.methods = {
             'random': self._random_sampling,
             'farthest': self._farthest_point_sampling,
-            'uniform_grid': self._uniform_grid_sampling,
-            'voxel_grid': self._voxel_grid_sampling,
-            'fps_cluster': self._cluster_farthest_sampling,
         }
 
     def sample(self, method: str, vertices: torch.Tensor, num_points: int) -> torch.Tensor:
@@ -60,63 +56,3 @@ class MeshPointSampler:
             farthest_pts[i] = vertices[idx]
             distances = torch.minimum(distances, torch.norm(vertices - vertices[idx], dim=1))
         return farthest_pts
-
-    def _uniform_grid_sampling(self, vertices: torch.Tensor, num_points: int) -> torch.Tensor:
-        """
-        均匀网格采样：将点云划分成网格块，在每个块中取均值点作为代表。
-
-        优点：均匀覆盖空间，保留全局结构。
-        缺点：对稀疏区域表现较差，边界可能欠采样。
-        """
-        grid_size = int(np.ceil(np.cbrt(num_points)))
-        min_vals = vertices.min(0)[0]
-        max_vals = vertices.max(0)[0]
-        grid_spacing = (max_vals - min_vals) / grid_size
-        indices = ((vertices - min_vals) / grid_spacing).long()
-        unique_idx, inverse_indices = torch.unique(indices, return_inverse=True, dim=0)
-        centroids = torch.zeros((unique_idx.shape[0], vertices.shape[1]), dtype=vertices.dtype)
-        for i in range(unique_idx.shape[0]):
-            group = vertices[inverse_indices == i]
-            centroids[i] = group.mean(0)
-        if centroids.shape[0] >= num_points:
-            selected = np.random.choice(centroids.shape[0], num_points, replace=False)
-            return centroids[selected]
-        else:
-            pad = torch.zeros((num_points - centroids.shape[0], 3), dtype=vertices.dtype)
-            return torch.cat((centroids, pad), dim=0)
-
-    def _voxel_grid_sampling(self, vertices: torch.Tensor, num_points: int) -> torch.Tensor:
-        """
-        体素格采样：将点云划分到立方体体素中，只保留每个体素的一个点。
-
-        优点：简化点云，保留结构，速度快。
-        缺点：随机选点可能导致局部结构丢失。
-        """
-        voxel_size = (vertices.max(0)[0] - vertices.min(0)[0]).max().item() / np.cbrt(num_points)
-        coords = ((vertices - vertices.min(0)[0]) / voxel_size).floor()
-        _, unique_indices = np.unique(coords.numpy(), axis=0, return_index=True)
-        sampled = vertices[unique_indices]
-        if sampled.shape[0] >= num_points:
-            selected = np.random.choice(sampled.shape[0], num_points, replace=False)
-            return sampled[selected]
-        else:
-            pad = torch.zeros((num_points - sampled.shape[0], 3), dtype=vertices.dtype)
-            return torch.cat((sampled, pad), dim=0)
-
-    def _cluster_farthest_sampling(self, vertices: torch.Tensor, num_points: int) -> torch.Tensor:
-        """
-        基于局部密度 + 远点的聚类采样：
-        - 首先估计每个点的局部密度（通过k近邻）。
-        - 密度越高的点被采样概率越小，防止“堆积”。
-        - 使用概率分布加权采样。
-
-        优点：既考虑均匀性又保留稀疏区域特征。
-        缺点：依赖kNN，计算成本略高。
-        """
-        np_vertices = vertices.numpy()
-        nbrs = NearestNeighbors(n_neighbors=min(30, len(vertices))).fit(np_vertices)
-        _, indices = nbrs.kneighbors(np_vertices)
-        density = 1.0 / (np.std(np.diff(indices, axis=1), axis=1) + 1e-6)
-        prob = density / density.sum()
-        selected_indices = np.random.choice(len(vertices), size=num_points, replace=False, p=prob)
-        return vertices[selected_indices]
