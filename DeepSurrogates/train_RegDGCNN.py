@@ -118,7 +118,7 @@ def initialize_model(config: dict) -> torch.nn.Module:
     if config['cuda'] and torch.cuda.device_count() > 1:
         device_cnt = torch.cuda.device_count()
         model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
-        summary(model, input_size=(config['batch_size'], 3, config['num_points']))
+        # summary(model, input_size=(config['batch_size'], 3, config['num_points']))
 
     logging.info("[Model] Initializing the model, Model parameters:")
     # Return the initialized model
