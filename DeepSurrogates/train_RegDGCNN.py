@@ -43,11 +43,11 @@ os.chdir(os.getcwd())
 
 # Configuration dictionary to hold hyperparameters and settings
 config = {
-    'exp_name': 'CdPrediction_DrivAerNet2800_fps_cluster',
+    'exp_name': 'CdPred_2800',
     'train_target': 'Average Cd',
     'cuda': True,
     'seed': 1,
-    'num_points': 5000,
+    'num_points': 65536,
     'lr': 0.001,
     'batch_size': 32,
     'epochs': 10000,
@@ -61,7 +61,7 @@ config = {
     'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
     'aero_coeff': os.path.join(proj_path, 'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
     'subset_dir': os.path.join(proj_path, 'splits', 'old2800'),
-    'sample_method': 'farthest',
+    'sample_method': 'random',
 }
 
 writer = None
@@ -218,9 +218,9 @@ def train_and_evaluate(model: torch.nn.Module, train_dataloader: DataLoader, val
         optimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9, weight_decay=1e-4)
 
     # Initialize the learning rate scheduler (ReduceLROnPlateau) to reduce the learning rate based on validation loss
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=15, factor=0.5, verbose=True, eps=float('1e-15'))
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5, verbose=True, eps=float('1e-15'))
     # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=20, factor=0.1, verbose=True)
-    early_stopping = EarlyStopping(patience=60, verbose=True)
+    early_stopping = EarlyStopping(patience=50, verbose=True)
     best_model_path = os.path.join(proj_path, 'models', f'{config["exp_name"]}_best_model.pth')
 
     best_mse = float('inf')  # Initialize the best MSE as infinity

@@ -185,10 +185,10 @@ class DrivAerNetDataset(Dataset):
             try:
                 return torch.load(load_path)
             except (EOFError, RuntimeError) as e:
-                logging.error(f"[Dataset] Failed to load point cloud file {load_path}: {e}")
+                # logging.error(f"[Dataset] Failed to load point cloud file {load_path}: {e}")
                 return None
         else:
-            logging.error(f"[Dataset] Point cloud file {load_path} does not exist or is empty.")
+            # logging.error(f"[Dataset] Point cloud file {load_path} does not exist or is empty.")
             return None
 
     def _load_mesh_vertices(self, design_id: str) -> Optional[torch.Tensor]:
