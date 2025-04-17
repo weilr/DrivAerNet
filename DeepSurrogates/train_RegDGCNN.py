@@ -16,6 +16,7 @@ The model architecture incorporates several techniques, including dynamic graph 
 EdgeConv operations, and global feature aggregation, to robustly learn from graph and point cloud data.
 
 """
+import argparse
 import datetime
 import logging
 import os
@@ -40,29 +41,6 @@ if platform.system() == "Windows":
 else:
     proj_path = os.getcwd()
 os.chdir(os.getcwd())
-
-# Configuration dictionary to hold hyperparameters and settings
-config = {
-    'exp_name': 'CdPred_2800',
-    'train_target': 'Average Cd',
-    'cuda': True,
-    'seed': 1,
-    'num_points': 65536,
-    'lr': 0.001,
-    'batch_size': 32,
-    'epochs': 10000,
-    'dropout': 0.4,
-    'emb_dims': 512,
-    'k': 40,
-    'num_workers': 64,
-    'optimizer': 'adamw',
-    # 'channels': [6, 64, 128, 256, 512, 1024],
-    # 'linear_sizes': [128, 64, 32, 16],
-    'dataset_path': os.path.join(proj_path, '3DMeshesSTL'),  # Update this with your dataset path
-    'aero_coeff': os.path.join(proj_path, 'AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv'),
-    'subset_dir': os.path.join(proj_path, 'splits', 'old2800'),
-    'sample_method': 'random',
-}
 
 writer = None
 final_model_path = None
@@ -148,7 +126,7 @@ def initialize_model(config: dict) -> torch.nn.Module:
 
 
 def get_dataloaders(dataset_path: str, aero_coeff: str, subset_dir: str, num_points: int, batch_size: int,
-                    target: str = 'Average Cd', sample_method:str ='random') -> tuple:
+                    target: str = 'Average Cd', sample_method: str = 'random') -> tuple:
     """
     Prepare and return the training, validation, and test DataLoader objects.
 
@@ -391,7 +369,51 @@ def load_and_test_model(model_path, test_dataloader, device):
     test_model(model, test_dataloader, config)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--exp_name', type=str, default='CdPred_DrivAerNet')
+    parser.add_argument('--train_target', type=str, default='Average Cd')
+    parser.add_argument('--cuda', type=bool, default=True)
+    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--num_points', type=int, default=65536)
+    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--epochs', type=int, default=10000)
+    parser.add_argument('--dropout', type=float, default=0.4)
+    parser.add_argument('--emb_dims', type=int, default=512)
+    parser.add_argument('--k', type=int, default=40)
+    parser.add_argument('--num_workers', type=int, default=64)
+    parser.add_argument('--optimizer', type=str, default='adamw', choices=['adamw', 'adam', 'sgd'])
+    parser.add_argument('--dataset_path', type=str, default='3DMeshesSTL')
+    parser.add_argument('--aero_coeff', type=str, default='AeroCoefficients_DrivAerNet_FilteredCorrected_no_prefix.csv')
+    parser.add_argument('--subset_dir', type=str, default='old2800')
+    parser.add_argument('--sample_method', type=str, default='random', choices=['random', 'farthest'])
+    return parser.parse_args()
+
+
+# 在主函数中通过 args 更新配置
 if __name__ == "__main__":
+    args = parse_args()
+    config = {
+        'exp_name': args.exp_name,
+        'train_target': args.train_target,
+        'cuda': args.cuda,
+        'seed': args.seed,
+        'num_points': args.num_points,
+        'lr': args.lr,
+        'batch_size': args.batch_size,
+        'epochs': args.epochs,
+        'dropout': args.dropout,
+        'emb_dims': args.emb_dims,
+        'k': args.k,
+        'num_workers': args.num_workers,
+        'optimizer': args.optimizer,
+        'dataset_path': os.path.join(proj_path, args.dataset_path),
+        'aero_coeff': os.path.join(proj_path, args.aero_coeff),
+        'subset_dir': os.path.join(proj_path, 'splits', args.subset_dir),
+        'sample_method': args.sample_method,
+    }
+
     init()
     setup_seed(config['seed'])
     model = initialize_model(config).to(device)
