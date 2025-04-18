@@ -31,7 +31,7 @@ from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 
-from DeepSurrogates.trainUtil import init_logger, progress
+from DeepSurrogates.utils import init_logger, progress
 from DrivAerNetDataset import DrivAerNetDataset
 from model import RegDGCNN
 

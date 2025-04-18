@@ -24,7 +24,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from DeepSurrogate_models import RegPointNet
 from DrivAerNetDataset import DrivAerNetDataset
-from DeepSurrogates.trainUtil import init_logger
+from DeepSurrogates.utils import init_logger
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.path.dirname(os.getcwd()))

@@ -299,6 +299,8 @@ class DrivAerNetDataset(Dataset):
                         logging.warning(f"Skipping design {design_id} because point cloud is not found or corrupted.")
                         idx = (idx + 1) % len(self.data_frame)
                         continue
+                    else:
+                        self._save_point_cloud(design_id, vertices)
             else:
                 vertices = self._load_mesh_vertices(design_id)
 

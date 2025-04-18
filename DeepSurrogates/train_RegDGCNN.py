@@ -34,7 +34,7 @@ from torchinfo import summary
 
 from DeepSurrogates.DeepSurrogate_models import RegDGCNN
 from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
-from DeepSurrogates.trainUtil import init_logger, progress, EarlyStopping
+from DeepSurrogates.utils import init_logger, progress, EarlyStopping
 
 if platform.system() == "Windows":
     proj_path = os.path.dirname(os.getcwd())

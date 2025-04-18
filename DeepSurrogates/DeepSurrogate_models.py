@@ -13,15 +13,11 @@ for the task of surrogate modeling of the aerodynamic drag.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import os
-import copy
-import math
-import numpy as np
-import trimesh
-from torch_geometric.data import Data, DataLoader
-from torch_geometric.nn import GCNConv, GATConv, global_mean_pool, global_max_pool, JumpingKnowledge
 from torch.nn import Sequential, Linear, ReLU, BatchNorm1d, Dropout
+from torch_geometric.data import Data
 from torch_geometric.nn import BatchNorm
+from torch_geometric.nn import GCNConv, GATConv, global_mean_pool, JumpingKnowledge
+
 
 def knn(x, k):
     """
@@ -133,7 +129,7 @@ class RegDGCNN(nn.Module):
                                    nn.LeakyReLU(negative_slope=0.2))
 
         # Fully connected layers to interpret the extracted features and make predictions
-        self.linear1 = nn.Linear(args['emb_dims']*2, 128, bias=False)
+        self.linear1 = nn.Linear(args['emb_dims'] * 2, 128, bias=False)
         self.bn6 = nn.BatchNorm1d(128)
         self.dp1 = nn.Dropout(p=args['dropout'])
 
@@ -171,16 +167,16 @@ class RegDGCNN(nn.Module):
         x1 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 64, num_points, k) -> (batch_size, 64, num_points)
 
         # Repeat the process for subsequent EdgeConv blocks
-        x = get_graph_feature(x1, k=self.k)   # (batch_size, 256, num_points) -> (batch_size, 256*2, num_points, k)
-        x = self.conv2(x)                     # (batch_size, 256*2, num_points, k) -> (batch_size, 512, num_points, k)
+        x = get_graph_feature(x1, k=self.k)  # (batch_size, 256, num_points) -> (batch_size, 256*2, num_points, k)
+        x = self.conv2(x)  # (batch_size, 256*2, num_points, k) -> (batch_size, 512, num_points, k)
         x2 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 512, num_points, k) -> (batch_size, 512, num_points)
 
-        x = get_graph_feature(x2, k=self.k)   # (batch_size, 512, num_points) -> (batch_size, 512*2, num_points, k)
-        x = self.conv3(x)                     # (batch_size, 512*2, num_points, k) -> (batch_size, 512, num_points, k)
+        x = get_graph_feature(x2, k=self.k)  # (batch_size, 512, num_points) -> (batch_size, 512*2, num_points, k)
+        x = self.conv3(x)  # (batch_size, 512*2, num_points, k) -> (batch_size, 512, num_points, k)
         x3 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 512, num_points, k) -> (batch_size, 512, num_points)
 
-        x = get_graph_feature(x3, k=self.k)   # (batch_size, 512, num_points) -> (batch_size, 512*2, num_points, k)
-        x = self.conv4(x)                     # (batch_size, 512*2, num_points, k) -> (batch_size, 1024, num_points, k)
+        x = get_graph_feature(x3, k=self.k)  # (batch_size, 512, num_points) -> (batch_size, 512*2, num_points, k)
+        x = self.conv4(x)  # (batch_size, 512*2, num_points, k) -> (batch_size, 1024, num_points, k)
         x4 = x.max(dim=-1, keepdim=False)[0]  # (batch_size, 1024, num_points, k) -> (batch_size, 1024, num_points)
 
         # Concatenate features from all EdgeConv blocks
@@ -193,7 +189,7 @@ class RegDGCNN(nn.Module):
         x1 = F.adaptive_max_pool1d(x, 1).view(batch_size, -1)
         # (batch_size, emb_dims, num_points) -> (batch_size, emb_dims)
         x2 = F.adaptive_avg_pool1d(x, 1).view(batch_size, -1)
-        x = torch.cat((x1, x2), 1)   # (batch_size, emb_dims*2)
+        x = torch.cat((x1, x2), 1)  # (batch_size, emb_dims*2)
 
         # Process features through fully connected layers with dropout and batch normalization
         x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2)  # (batch_size, emb_dims*2) -> (batch_size, 128)
@@ -206,7 +202,7 @@ class RegDGCNN(nn.Module):
         x = self.dp4(x)
 
         # Final linear layer to produce the output
-        x = self.linear5(x)                                              # (batch_size, 16) -> (batch_size, 1)
+        x = self.linear5(x)  # (batch_size, 16) -> (batch_size, 1)
 
         return x
 
@@ -221,6 +217,7 @@ class RegPointNet(nn.Module):
     Methods:
         forward(x): Forward pass through the network.
     """
+
     def __init__(self, args):
         """
         Initialize the RegPointNet model for regression tasks with enhanced complexity,
@@ -302,8 +299,9 @@ class RegPointNet(nn.Module):
         features = x
         x = self.final_linear(x)
 
-        #return x, features
+        # return x, features
         return x
+
 
 class DragGNN(torch.nn.Module):
     """
@@ -315,6 +313,7 @@ class DragGNN(torch.nn.Module):
     Methods:
         forward(data): Forward pass through the network.
     """
+
     def __init__(self):
         super(DragGNN, self).__init__()
         self.conv1 = GCNConv(3, 512)
@@ -353,6 +352,7 @@ class DragGNN_XL(torch.nn.Module):
     Methods:
         forward(data): Forward pass through the network.
     """
+
     def __init__(self):
         super(DragGNN_XL, self).__init__()
         self.conv1 = GCNConv(3, 64)
@@ -410,6 +410,7 @@ class EnhancedDragGNN(torch.nn.Module):
     Methods:
         forward(data): Forward pass through the network.
     """
+
     def __init__(self):
         super(EnhancedDragGNN, self).__init__()
         self.gcn1 = GCNConv(3, 64)
