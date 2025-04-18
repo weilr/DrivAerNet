@@ -1,4 +1,5 @@
 # DrivAerNet++
+> Update (18.04.2025): We are open-sourcing the [RegDGCNN pipeline for surface field prediction](https://github.com/Mohamedelrefaie/DrivAerNet/tree/main/RegDGCNN_SurfaceFields) on 3D car meshes from DrivAerNet++.
 
 > Update (01.04.2025): We are excited to share our new paper on [**AI Agents in Engineering Design**](https://www.researchgate.net/publication/390354690_AI_Agents_in_Engineering_Design_A_Multi-Agent_Framework_for_Aesthetic_and_Aerodynamic_Car_Design), where we introduce a **multi-agent framework** that leverages **vision-language models (VLMs)**, **large language models (LLMs)**, and **geometric deep learning** to accelerate the car design process—from concept sketching to CAD modeling, meshing, and aerodynamic simulation. This system enables real-time interaction between designers, engineers, generative AI models, and tools like Blender, OpenFOAM, and ParaView.
 
@@ -137,8 +138,8 @@ DrivAerNe is integrated into **NVIDIA Modulus**, supporting advanced deep learni
 DrivAerNet++ was featured in the **IJCAI 2024 competition - Rapid aerodynamic drag prediction for arbitrary vehicles** using deep learning. The dataset is also integrated into **PaddleScience**, Baidu’s SciML toolkit for physics-based AI.
 
 🔗 [IJCAI 2024 Competition](https://aistudio.baidu.com/projectdetail/7459168?channelType=0&channel=0)
-🔗 [PaddleScience DrivAerNet Example](https://paddlescience-docs.readthedocs.io/zh-cn/latest/zh/examples/drivaernet/)
-
+🔗 [PaddleScience DrivAerNet Example](https://paddlescience-docs.readthedocs.io/zh-cn/latest/zh/examples/drivaernet/) 
+🔗 [PaddleScience DrivAerNet++ Example](https://paddlescience-docs.readthedocs.io/zh-cn/latest/zh/examples/drivaernetplusplus/) 
 
 ## Contributing
 
