@@ -112,7 +112,7 @@ def train_model(args):
 
     # Prepare command for training script
     cmd = [
-        "python", "train.py",
+        "python", "./RegDGCNN_SurfaceFields/train.py",
         "--exp_name", args.exp_name,
         "--dataset_path", args.dataset_path,
         "--subset_dir", args.subset_dir,
@@ -170,7 +170,7 @@ def evaluate_model(args):
 
     # Prepare command for evaluation script
     cmd = [
-        "python", "evaluate.py",
+        "python", "./RegDGCNN_SurfaceFields/evaluate.py",
         "--exp_name", args.exp_name,
         "--model_checkpoint", model_checkpoint,
         "--dataset_path", args.dataset_path,
