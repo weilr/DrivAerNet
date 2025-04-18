@@ -375,8 +375,9 @@ else:
 os.chdir(proj_path)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Script to run DrivAerNet Dataset caching")
-    parser.add_argument('--sample_method', type=str, default='fps_cluster', help='Sampling method to use')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sample_method', type=str, default='fps_cluster')
+    parser.add_argument('--num_points', type=int, default=5000)
     return parser.parse_args()
 
 
@@ -388,7 +389,7 @@ if __name__ == '__main__':
         'train_target': 'Average Cd',
         'cuda': True,
         'seed': 1,
-        'num_points': 5000,
+        'num_points': args.num_points,
         'lr': 0.001,
         'batch_size': 32,
         'epochs': 10000,

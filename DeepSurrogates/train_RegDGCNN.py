@@ -375,7 +375,7 @@ def parse_args():
     parser.add_argument('--train_target', type=str, default='Average Cd')
     parser.add_argument('--cuda', type=bool, default=True)
     parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--num_points', type=int, default=65536)
+    parser.add_argument('--num_points', type=int, default=5000)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=10000)
