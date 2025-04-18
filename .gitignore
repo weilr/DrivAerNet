@@ -20,6 +20,7 @@ db.sqlite3
 
 models/
 3DMeshesSTL/
+PressureVTK/
 AnnotationsSTL/
 DrivAerNet_v1/RegDGCNN/models/
 runs/

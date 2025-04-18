@@ -391,7 +391,6 @@ def parse_args():
     return parser.parse_args()
 
 
-# 在主函数中通过 args 更新配置
 if __name__ == "__main__":
     args = parse_args()
     config = {
