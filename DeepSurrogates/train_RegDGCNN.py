@@ -21,6 +21,7 @@ import datetime
 import logging
 import os
 import platform
+import sys
 import time
 
 import numpy as np
@@ -52,6 +53,7 @@ def init():
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     config['exp_name'] = gen_model_name(config, timestamp)
 
+    sys.stdout.reconfigure(line_buffering=True)
     init_logger(os.path.join(proj_path, 'logs'), f'run_{timestamp}.log')
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
 

@@ -1,0 +1,5 @@
+2025-04-19 15:32:55,753 - INFO - Arguments: Namespace(exp_name='DrivAerNet_Pressure', seed=1, dataset_path='../PressureVTK', subset_dir='../splits/old2800', cache_dir='../PressureVTK/cache', num_points=10000, batch_size=12, epochs=150, lr=0.001, num_workers=4, test_only=False, gpus='0', dropout=0.4, emb_dims=1024, k=40, output_channels=1)
+2025-04-19 15:32:55,753 - INFO - Starting training with 1 GPUs
+2025-04-19 15:32:55,943 - INFO - Total trainable parameters: 1437705
+2025-04-19 15:32:56,805 - INFO - Data loaded: 230 training batches, 49 validation batches, 49 test batches
+2025-04-19 15:32:56,806 - INFO - Starting training for 150 epochs

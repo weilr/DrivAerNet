@@ -112,6 +112,11 @@ class SurfacePressureDataset(Dataset):
                 return None, None  # Return None if preprocessing is disabled and cache doesn't exist
 
         point_cloud_np = np.array(point_cloud.points)
+
+        logging.info("point_cloud_np.shape:{}",point_cloud_np.shape)
+        logging.info("point_cloud_np.T.shape:{}",point_cloud_np.T.shape)
+        logging.info("point_cloud_np.T[np.newaxis, :, :]:{}",point_cloud_np.T[np.newaxis, :, :])
+
         point_cloud_tensor = torch.tensor(point_cloud_np.T[np.newaxis, :, :], dtype=torch.float32)
         pressures_tensor = torch.tensor(pressures[np.newaxis, :], dtype=torch.float32)
 
