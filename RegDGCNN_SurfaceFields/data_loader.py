@@ -112,7 +112,8 @@ class SurfacePressureDataset(Dataset):
                 return None, None  # Return None if preprocessing is disabled and cache doesn't exist
 
         logging.info(f"point_cloud.points type: {type(point_cloud.points)}")
-        point_cloud_np = np.asarray(point_cloud.points)
+        # point_cloud_np = np.array(point_cloud.points)
+        point_cloud_np = point_cloud.points.base
         logging.info(f"Loaded point cloud with shape: {point_cloud_np.shape}")
         logging.info(f"Loaded pressures with shape: {pressures.shape}")
 
