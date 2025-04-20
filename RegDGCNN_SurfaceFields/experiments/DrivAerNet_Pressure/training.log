@@ -3,3 +3,13 @@
 2025-04-19 15:32:55,943 - INFO - Total trainable parameters: 1437705
 2025-04-19 15:32:56,805 - INFO - Data loaded: 230 training batches, 49 validation batches, 49 test batches
 2025-04-19 15:32:56,806 - INFO - Starting training for 150 epochs
+2025-04-20 16:29:51,532 - INFO - Arguments: Namespace(exp_name='DrivAerNet_Pressure', seed=1, dataset_path='../PressureVTK', subset_dir='../splits/old2800', cache_dir='../PressureVTK/cache', num_points=10000, batch_size=12, epochs=150, lr=0.001, num_workers=4, test_only=False, gpus='0', dropout=0.4, emb_dims=1024, k=40, output_channels=1)
+2025-04-20 16:29:51,532 - INFO - Starting training with 1 GPUs
+2025-04-20 16:29:51,738 - INFO - Total trainable parameters: 1437705
+2025-04-20 16:29:57,664 - INFO - Data loaded: 230 training batches, 49 validation batches, 49 test batches
+2025-04-20 16:29:57,665 - INFO - Starting training for 150 epochs
+2025-04-20 16:34:26,572 - INFO - Arguments: Namespace(exp_name='DrivAerNet_Pressure', seed=1, dataset_path='../PressureVTK', subset_dir='../splits/old2800', cache_dir='../PressureVTK/cache', num_points=10000, batch_size=12, epochs=150, lr=0.001, num_workers=4, test_only=False, gpus='0', dropout=0.4, emb_dims=1024, k=40, output_channels=1)
+2025-04-20 16:34:26,572 - INFO - Starting training with 1 GPUs
+2025-04-20 16:34:26,665 - INFO - Total trainable parameters: 1437705
+2025-04-20 16:34:32,519 - INFO - Data loaded: 230 training batches, 49 validation batches, 49 test batches
+2025-04-20 16:34:32,520 - INFO - Starting training for 150 epochs

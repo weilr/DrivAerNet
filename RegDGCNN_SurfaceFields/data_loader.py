@@ -115,6 +115,8 @@ class SurfacePressureDataset(Dataset):
                 logging.error(f"Cache file not found for {vtk_file_path} and preprocessing is disabled.")
                 return None, None  # Return None if preprocessing is disabled and cache doesn't exist
 
+        print(point_cloud)
+        print(point_cloud.points)
         point_cloud_np = np.array(point_cloud.points)
 
         logging.info(f"point_cloud_np.shape:{point_cloud_np.shape}")
