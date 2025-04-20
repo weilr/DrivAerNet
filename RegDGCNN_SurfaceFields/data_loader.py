@@ -59,6 +59,8 @@ class SurfacePressureDataset(Dataset):
     def _load_from_cache(self, cache_path):
         """Load preprocessed point cloud and pressure data from an npz file."""
         data = np.load(cache_path)
+        logging.info(f"Data preprocessing... Cached data loaded from{cache_path}")
+        logging.info(data)
         point_cloud = pv.PolyData(data['points'])
         pressures = data['pressures']
         return point_cloud, pressures
