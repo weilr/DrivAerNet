@@ -113,9 +113,9 @@ class SurfacePressureDataset(Dataset):
 
         point_cloud_np = np.array(point_cloud.points)
 
-        logging.info("point_cloud_np.shape:{}",point_cloud_np.shape)
-        logging.info("point_cloud_np.T.shape:{}",point_cloud_np.T.shape)
-        logging.info("point_cloud_np.T[np.newaxis, :, :]:{}",point_cloud_np.T[np.newaxis, :, :])
+        logging.info(f"point_cloud_np.shape:{point_cloud_np.shape}")
+        logging.info(f"point_cloud_np.T.shape:{point_cloud_np.T.shape}")
+        logging.info(f"point_cloud_np.T[np.newaxis, :, :]:{point_cloud_np.T[np.newaxis, :, :].shape}")
 
         point_cloud_tensor = torch.tensor(point_cloud_np.T[np.newaxis, :, :], dtype=torch.float32)
         pressures_tensor = torch.tensor(pressures[np.newaxis, :], dtype=torch.float32)
