@@ -16,6 +16,8 @@ import torch.distributed as dist
 import pyvista as pv
 import logging
 
+from vtkmodules.util.numpy_support import vtk_to_numpy
+
 
 class SurfacePressureDataset(Dataset):
     """
@@ -113,7 +115,7 @@ class SurfacePressureDataset(Dataset):
 
         logging.info(f"point_cloud.points type: {type(point_cloud.points)}")
         # point_cloud_np = np.array(point_cloud.points)
-        point_cloud_np = point_cloud.points.to_array()
+        point_cloud_np = vtk_to_numpy(point_cloud.points)
         logging.info(f"Loaded point cloud with shape: {point_cloud_np.shape}")
         logging.info(f"Loaded pressures with shape: {pressures.shape}")
 
