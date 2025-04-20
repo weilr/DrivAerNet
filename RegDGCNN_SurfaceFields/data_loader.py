@@ -61,6 +61,8 @@ class SurfacePressureDataset(Dataset):
         data = np.load(cache_path)
         logging.info(f"Data preprocessing... Cached data loaded from{cache_path}")
         logging.info(data)
+        logging.info(data['points'].shape)
+        logging.info(data['pressures'].shape)
         point_cloud = pv.PolyData(data['points'])
         pressures = data['pressures']
         return point_cloud, pressures
