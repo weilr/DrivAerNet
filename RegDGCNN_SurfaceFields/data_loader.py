@@ -113,7 +113,7 @@ class SurfacePressureDataset(Dataset):
 
         logging.info(f"point_cloud.points type: {type(point_cloud.points)}")
         # point_cloud_np = np.array(point_cloud.points)
-        point_cloud_np = point_cloud.points.base
+        point_cloud_np = point_cloud.points.to_array()
         logging.info(f"Loaded point cloud with shape: {point_cloud_np.shape}")
         logging.info(f"Loaded pressures with shape: {pressures.shape}")
 
