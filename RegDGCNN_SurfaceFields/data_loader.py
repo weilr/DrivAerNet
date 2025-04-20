@@ -59,10 +59,6 @@ class SurfacePressureDataset(Dataset):
     def _load_from_cache(self, cache_path):
         """Load preprocessed point cloud and pressure data from an npz file."""
         data = np.load(cache_path)
-        logging.info(f"Data preprocessing... Cached data loaded from{cache_path}")
-        logging.info(data)
-        logging.info(data['points'].shape)
-        logging.info(data['pressures'].shape)
         point_cloud = pv.PolyData(data['points'])
         pressures = data['pressures']
         return point_cloud, pressures
@@ -115,13 +111,10 @@ class SurfacePressureDataset(Dataset):
                 logging.error(f"Cache file not found for {vtk_file_path} and preprocessing is disabled.")
                 return None, None  # Return None if preprocessing is disabled and cache doesn't exist
 
-        print(point_cloud)
-        print(point_cloud.points)
-        point_cloud_np = np.array(point_cloud.points)
-
-        logging.info(f"point_cloud_np.shape:{point_cloud_np.shape}")
-        logging.info(f"point_cloud_np.T.shape:{point_cloud_np.T.shape}")
-        logging.info(f"point_cloud_np.T[np.newaxis, :, :]:{point_cloud_np.T[np.newaxis, :, :].shape}")
+        logging.info(f"point_cloud.points type: {type(point_cloud.points)}")
+        point_cloud_np = np.asarray(point_cloud.points)
+        logging.info(f"Loaded point cloud with shape: {point_cloud_np.shape}")
+        logging.info(f"Loaded pressures with shape: {pressures.shape}")
 
         point_cloud_tensor = torch.tensor(point_cloud_np.T[np.newaxis, :, :], dtype=torch.float32)
         pressures_tensor = torch.tensor(pressures[np.newaxis, :], dtype=torch.float32)

@@ -9,6 +9,7 @@ venv/
 # 忽略IDE配置文件
 .idea/
 .vscode/
+.idea
 
 # 忽略操作系统文件
 .DS_Store
@@ -25,4 +26,4 @@ AnnotationsSTL/
 DrivAerNet_v1/RegDGCNN/models/
 runs/
 DeepSurrogates/models/
-.idea
+RegDGCNN_SurfaceFields/experiments/
