@@ -200,7 +200,7 @@ def train_and_evaluate(rank, world_size, args):
     setup_seed(args.seed)
 
     # Initialize process group for DDP  gloo/nccl
-    dist.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
+    dist.init_process_group(backend='gloo', init_method='env://', world_size=world_size, rank=rank)
 
     local_rank = rank
     torch.cuda.set_device(local_rank)
