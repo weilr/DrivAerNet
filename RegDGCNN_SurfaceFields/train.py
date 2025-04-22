@@ -19,12 +19,12 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from DeepSurrogates.utils import init_logger, EarlyStopping, progress
-# Import modules
+
 from data_loader import get_dataloaders, PRESSURE_MEAN, PRESSURE_STD
 from model_pressure import RegDGCNN_pressure
 from utils import setup_seed
