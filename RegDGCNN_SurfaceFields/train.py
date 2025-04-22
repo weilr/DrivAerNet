@@ -223,8 +223,13 @@ def train_and_evaluate(rank, world_size, args):
 
     # Set up logging (only on rank 0)
     if local_rank == 0:
+        global writer
         logging.info(f"Starting training with {world_size} GPUs")
         # print(f"Starting training with {world_size} GPUs")
+        if writer is None:
+            logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
+            logging.info(f"[Main] Initializing TensorBoard at {logdir}")
+            writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
     # Initialize model
     model = initialize_model(args, local_rank)
@@ -352,7 +357,6 @@ def train_and_evaluate(rank, world_size, args):
 
 
 def init(args):
-    global writer
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     args.exp_name = gen_model_name(args, timestamp)
 
@@ -362,11 +366,6 @@ def init(args):
     logging.info("[Config] Training configuration:")
     for arg, value in vars(args).items():
         logging.info(f"{arg:<20}: {value}")
-
-    if writer is None:
-        logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
-        logging.info(f"[Main] Initializing TensorBoard at {logdir}")
-        writer = SummaryWriter(logdir)  # tensorboard --logdir runs
 
 
 def gen_model_name(args, timestamp):
