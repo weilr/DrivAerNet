@@ -114,12 +114,7 @@ class SurfacePressureDataset(Dataset):
                 logging.error(f"Cache file not found for {vtk_file_path} and preprocessing is disabled.")
                 return None, None  # Return None if preprocessing is disabled and cache doesn't exist
 
-        logging.info(f"point_cloud.points type: {type(point_cloud.points)}")
-        # point_cloud_np = np.array(point_cloud.points)
-        # point_cloud_np = vtk_to_numpy(point_cloud.points)
         point_cloud_np = numpy_support.vtk_to_numpy(point_cloud.points.GetData())
-        logging.info(f"Loaded point cloud with shape: {point_cloud_np.shape}")
-        logging.info(f"Loaded pressures with shape: {pressures.shape}")
 
         point_cloud_tensor = torch.tensor(point_cloud_np.T[np.newaxis, :, :], dtype=torch.float32)
         pressures_tensor = torch.tensor(pressures[np.newaxis, :], dtype=torch.float32)

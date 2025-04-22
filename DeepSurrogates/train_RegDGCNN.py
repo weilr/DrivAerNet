@@ -31,7 +31,6 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
-from torchinfo import summary
 
 from DeepSurrogates.DeepSurrogate_models import RegDGCNN
 from DeepSurrogates.DrivAerNetDataset import DrivAerNetDataset
@@ -54,7 +53,7 @@ def init():
     config['exp_name'] = gen_model_name(config, timestamp)
 
     sys.stdout.reconfigure(line_buffering=True)
-    init_logger(os.path.join(proj_path, 'logs'), f'run_{timestamp}.log')
+    init_logger(log_file=os.path.join(proj_path, 'logs'), log_name=f'CdPred_{timestamp}.log')
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
 
     # Set the device for training
@@ -120,10 +119,10 @@ def initialize_model(config: dict) -> torch.nn.Module:
     if config['cuda'] and torch.cuda.device_count() > 1:
         device_cnt = torch.cuda.device_count()
         model = torch.nn.DataParallel(model, device_ids=list(range(device_cnt)))
-        # summary(model, input_size=(config['batch_size'], 3, config['num_points']))
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logging.info(f"Total trainable parameters: {total_params}")
 
     logging.info("[Model] Initializing the model, Model parameters:")
-    # Return the initialized model
     return model
 
 

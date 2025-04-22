@@ -7,32 +7,40 @@ import torch
 from tqdm import tqdm
 
 
-def init_logger(log_dir: str, log_name: str):
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+def init_logger(log_name: str, log_file=None, level=logging.INFO):
+    """
+    Set up the logger for the application.
 
-    log_path = os.path.join(log_dir, log_name)
+    Args:
+        log_file: Path to the log file
+        level: Logging level
+    """
+    if not os.path.exists(log_file):
+        os.makedirs(log_file)
 
-    # 设置 logger
+    # Create logger
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
 
-    # 清除已有 handler，避免重复打印
+    # Remove existing handlers to avoid duplicate logs
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # 输出到文件
-    file_handler = logging.FileHandler(log_path, encoding='utf-8')
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
-    # 输出到控制台
+    # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter('%(message)s'))
-
-    logger.addHandler(file_handler)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(console_handler)
 
-    logging.info(f"[Logger] Initialization completed：{log_path}")
+    if log_file:
+        # Create file handler if log_file is provided
+        log_path = os.path.join(log_file, log_name)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        file_handler.setLevel(level)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(file_handler)
+        logging.info(f"[Logger] Initialization completed：{log_path}")
 
 
 def log_tqdm(iterable, desc=None):
@@ -84,7 +92,7 @@ class EarlyStopping:
     def save_checkpoint(self, val_loss, model, path):
         if self.verbose:
             logging.info(
-                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model in {path}')
+                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).')
         # torch.save(model.state_dict(), path+'/'+'checkpoint.pth')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save(model.state_dict(), path)

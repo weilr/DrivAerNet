@@ -5,25 +5,37 @@
 Training script for RegDGCNN pressure field prediction model on the DrivAerNet++ dataset.
 This version includes distributed training support for multi-GPU acceleration.
 """
-
+import argparse
+import datetime
+import logging
 import os
+import platform
+import sys
+import time
+
+import numpy as np
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import torch.optim as optim
+from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import numpy as np
-import time
-import argparse
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-import logging
 
+from DeepSurrogates.utils import init_logger, EarlyStopping, progress
 # Import modules
 from data_loader import get_dataloaders, PRESSURE_MEAN, PRESSURE_STD
 from model_pressure import RegDGCNN_pressure
-from utils import setup_logger, setup_seed
+from utils import setup_seed
+
+if platform.system() == "Windows":
+    proj_path = os.path.dirname(os.getcwd())
+else:
+    proj_path = os.getcwd()
+os.chdir(os.getcwd())
+
+writer = None
 
 
 def parse_args():
@@ -68,12 +80,12 @@ def initialize_model(args, local_rank):
     return model
 
 
-def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank):
+def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, epoch):
     """Train for one epoch."""
     model.train()
     total_loss = 0
 
-    for data, targets in tqdm(train_dataloader, desc="[Training]"):
+    for data, targets in progress(train_dataloader, desc=f"Epoch {epoch + 1} [Training]"):
         data, targets = data.squeeze(1).to(local_rank), targets.squeeze(1).to(local_rank)
         targets = (targets - PRESSURE_MEAN) / PRESSURE_STD
 
@@ -88,13 +100,13 @@ def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank):
     return total_loss / len(train_dataloader)
 
 
-def validate(model, val_dataloader, criterion, local_rank):
+def validate(model, val_dataloader, criterion, local_rank, epoch):
     """Validate the model."""
     model.eval()
     total_loss = 0
 
     with torch.no_grad():
-        for data, targets in tqdm(val_dataloader, desc="[Validation]"):
+        for data, targets in progress(val_dataloader, desc=f"Epoch {epoch + 1} [Validation]"):
             data, targets = data.squeeze(1).to(local_rank), targets.squeeze(1).to(local_rank)
             targets = (targets - PRESSURE_MEAN) / PRESSURE_STD
 
@@ -179,10 +191,14 @@ def test_model(model, test_dataloader, criterion, local_rank, exp_dir):
         # Calculate max MAE
         max_mae = np.max(np.abs(all_targets - all_outputs))
 
-        print(f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {r_squared:.4f}")
-        print(f"Relative L2 Error: {avg_rel_l2:.6f}, Relative L1 Error: {avg_rel_l1:.6f}")
-        print(f"Total inference time: {total_inference_time:.2f}s for {total_samples_tensor.item()} samples")
+        # print(f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {r_squared:.4f}")
+        # print(f"Relative L2 Error: {avg_rel_l2:.6f}, Relative L1 Error: {avg_rel_l1:.6f}")
+        # print(f"Total inference time: {total_inference_time:.2f}s for {total_samples_tensor.item()} samples")
 
+        logging.info(
+            f"Test MSE: {avg_mse:.6f}, Test MAE: {avg_mae:.6f}, Max MAE: {max_mae:.6f}, Test R²: {r_squared:.4f}")
+        logging.info(f"Relative L2 Error: {avg_rel_l2:.6f}, Relative L1 Error: {avg_rel_l1:.6f}")
+        logging.info(f"Total inference time: {total_inference_time:.2f}s for {total_samples_tensor.item()} samples")
         # Save metrics to a text file
         metrics_file = os.path.join(exp_dir, 'test_metrics.txt')
         with open(metrics_file, 'w') as f:
@@ -200,20 +216,15 @@ def train_and_evaluate(rank, world_size, args):
     setup_seed(args.seed)
 
     # Initialize process group for DDP  gloo/nccl
-    dist.init_process_group(backend='gloo', init_method='env://', world_size=world_size, rank=rank)
+    dist.init_process_group(backend='nccl', init_method='env://', world_size=world_size, rank=rank)
 
     local_rank = rank
     torch.cuda.set_device(local_rank)
 
     # Set up logging (only on rank 0)
     if local_rank == 0:
-        exp_dir = os.path.join('experiments', args.exp_name)
-        os.makedirs(exp_dir, exist_ok=True)
-        log_file = os.path.join(exp_dir, 'training.log')
-        setup_logger(log_file)
-        logging.info(f"Arguments: {args}")
         logging.info(f"Starting training with {world_size} GPUs")
-        print(f"Starting training with {world_size} GPUs")
+        # print(f"Starting training with {world_size} GPUs")
 
     # Initialize model
     model = initialize_model(args, local_rank)
@@ -221,7 +232,7 @@ def train_and_evaluate(rank, world_size, args):
     if local_rank == 0:
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logging.info(f"Total trainable parameters: {total_params}")
-        print(f"Total trainable parameters: {total_params}")
+        # print(f"Total trainable parameters: {total_params}")
 
     # Prepare DataLoaders
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(
@@ -234,16 +245,19 @@ def train_and_evaluate(rank, world_size, args):
     if local_rank == 0:
         logging.info(
             f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
-        print(
-            f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
+        # print(
+        #     f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
 
     # Set up criterion, optimizer, and scheduler
     criterion = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.1, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.1, verbose=True, eps=float('1e-15'))
+    early_stopping = EarlyStopping(patience=50, verbose=True)
 
-    best_model_path = os.path.join('experiments', args.exp_name, 'best_model.pth')
-    final_model_path = os.path.join('experiments', args.exp_name, 'final_model.pth')
+    best_model_path = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}',
+                                   f'{args.exp_name}_best_model.pth')
+    final_model_path = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}',
+                                    f'{args.exp_name}_final_model.pth')
 
     # Check if test_only and model exists
     if args.test_only and os.path.exists(best_model_path):
@@ -262,7 +276,7 @@ def train_and_evaluate(rank, world_size, args):
 
     if local_rank == 0:
         logging.info(f"Starting training for {args.epochs} epochs")
-        print(f"Starting training for {args.epochs} epochs")
+        # print(f"Starting training for {args.epochs} epochs")
 
     # Training loop
     for epoch in range(args.epochs):
@@ -270,18 +284,19 @@ def train_and_evaluate(rank, world_size, args):
         train_dataloader.sampler.set_epoch(epoch)
 
         # Training
-        train_loss = train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank)
+        train_loss = train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, epoch)
 
         # Validation
-        val_loss = validate(model, val_dataloader, criterion, local_rank)
+        val_loss = validate(model, val_dataloader, criterion, local_rank, epoch)
 
         # Record losses
         if local_rank == 0:
             train_losses.append(train_loss)
             val_losses.append(val_loss)
-            logging.info(f"Epoch {epoch + 1}/{args.epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
-            print(f"Epoch {epoch + 1}/{args.epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
+            logging.info(f"[Epoch {epoch + 1}/{args.epochs}] - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
+            # print(f"Epoch {epoch + 1}/{args.epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
 
+            writer.add_scalars("RegDGCNN_Loss", {'train': train_loss, 'test': val_loss}, epoch + 1)
             # Save the best model
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
@@ -290,48 +305,71 @@ def train_and_evaluate(rank, world_size, args):
 
             # Update learning rate scheduler
             scheduler.step(val_loss)
-
+            early_stopping(val_loss, model, best_model_path)
+            if early_stopping.early_stop:
+                logging.info("Early stopping in epoch {}".format(epoch))
+                break
             # Save progress plot
-            if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
-                plt.figure(figsize=(10, 5))
-                plt.plot(range(1, epoch + 2), train_losses, label='Training Loss')
-                plt.plot(range(1, epoch + 2), val_losses, label='Validation Loss')
-                plt.xlabel('Epoch')
-                plt.ylabel('Loss')
-                plt.legend()
-                plt.title(f'Training Progress - RegDGCNN')
-                plt.savefig(os.path.join('experiments', args.exp_name, 'training_progress.png'))
-                plt.close()
+            # if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
+            #     plt.figure(figsize=(10, 5))
+            #     plt.plot(range(1, epoch + 2), train_losses, label='Training Loss')
+            #     plt.plot(range(1, epoch + 2), val_losses, label='Validation Loss')
+            #     plt.xlabel('Epoch')
+            #     plt.ylabel('Loss')
+            #     plt.legend()
+            #     plt.title(f'Training Progress - RegDGCNN')
+            #     plt.savefig(os.path.join('experiments', args.exp_name, 'training_progress.png'))
+            #     plt.close()
 
     # Save final model
     if local_rank == 0:
         torch.save(model.state_dict(), final_model_path)
         logging.info(f"Final model saved to {final_model_path}")
-        print(f"Final model saved to {final_model_path}")
+        # print(f"Final model saved to {final_model_path}")
 
     # Make sure all processes sync up before testing
     dist.barrier()
-
+    test_metrics_path = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}')
     # Test the final model
     if local_rank == 0:
         logging.info("Testing the final model")
-        print("Testing the final model:")
-    test_model(model, test_dataloader, criterion, local_rank, os.path.join('experiments', args.exp_name))
+        # print("Testing the final model:")
+    test_model(model, test_dataloader, criterion, local_rank, test_metrics_path)
 
     # Test the best model
     if local_rank == 0:
         logging.info("Testing the best model")
-        print("Testing the best model:")
+        # print("Testing the best model:")
     model.load_state_dict(torch.load(best_model_path, map_location=f'cuda:{local_rank}'))
-    test_model(model, test_dataloader, criterion, local_rank, os.path.join('experiments', args.exp_name))
+    test_model(model, test_dataloader, criterion, local_rank, test_metrics_path)
 
     # Clean up
     dist.destroy_process_group()
 
 
+def init(args):
+    global writer
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    args.exp_name = gen_model_name(args, timestamp)
+
+    sys.stdout.reconfigure(line_buffering=True)
+    init_logger(log_file=os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}'), log_name=f'training.log')
+    logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
+    logging.info(f"Arguments: {args}")
+    if writer is None:
+        logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
+        logging.info(f"[Main] Initializing TensorBoard at {logdir}")
+        writer = SummaryWriter(logdir)  # tensorboard --logdir runs
+
+
+def gen_model_name(args, timestamp):
+    return f"{args.exp_name}_{timestamp}_{args.num_points}nP_{args.k}k_{args.emb_dims}emb_{args.dropout}dp"
+
+
 def main():
     """Main function to parse arguments and start training."""
     args = parse_args()
+    init(args)
 
     # Set the master address and port for DDP
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -345,7 +383,7 @@ def main():
     world_size = len(gpu_list.split(','))
 
     # Create experiment directory
-    exp_dir = os.path.join('experiments', args.exp_name)
+    exp_dir = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}')
     os.makedirs(exp_dir, exist_ok=True)
 
     # Start distributed training
