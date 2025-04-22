@@ -248,6 +248,8 @@ def train_and_evaluate(rank, world_size, args):
         # print(
         #     f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
 
+    training_start_time = time.time()
+
     # Set up criterion, optimizer, and scheduler
     criterion = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
@@ -309,6 +311,8 @@ def train_and_evaluate(rank, world_size, args):
             if early_stopping.early_stop:
                 logging.info("Early stopping in epoch {}".format(epoch))
                 break
+            training_duration = time.time() - training_start_time
+            logging.info(f"Total training time: {training_duration:.2f}s")
             # Save progress plot
             # if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
             #     plt.figure(figsize=(10, 5))
@@ -355,7 +359,10 @@ def init(args):
     sys.stdout.reconfigure(line_buffering=True)
     init_logger(log_file=os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}'), log_name=f'training.log')
     logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
-    logging.info(f"Arguments: {args}")
+    logging.info("[Config] Training configuration:")
+    for arg, value in vars(args).items():
+        logging.info(f"{arg:<20}: {value}")
+
     if writer is None:
         logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
         logging.info(f"[Main] Initializing TensorBoard at {logdir}")
