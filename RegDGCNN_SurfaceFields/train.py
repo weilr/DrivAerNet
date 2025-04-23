@@ -24,7 +24,6 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from DeepSurrogates.utils import init_logger, EarlyStopping, progress
-
 from data_loader import get_dataloaders, PRESSURE_MEAN, PRESSURE_STD
 from model_pressure import RegDGCNN_pressure
 from utils import setup_seed
@@ -362,16 +361,11 @@ def train_and_evaluate(rank, world_size, args):
 
 def init(args):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    args.exp_name = gen_model_name(args, timestamp)
+    args.exp_name = f"{args.exp_name}_{timestamp}_{args.num_points}nP_{args.k}k_{args.emb_dims}emb_{args.dropout}dp"
 
     logging.info("[Config] Training configuration:")
     for arg, value in vars(args).items():
         logging.info(f"{arg:<20}: {value}")
-
-
-def gen_model_name(args, timestamp):
-    return f"{args.exp_name}_{timestamp}_{args.num_points}nP_{args.k}k_{args.emb_dims}emb_{args.dropout}dp"
-
 
 def main():
     """Main function to parse arguments and start training."""
