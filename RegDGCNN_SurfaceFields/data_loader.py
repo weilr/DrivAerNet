@@ -95,7 +95,7 @@ class SurfacePressureDataset(Dataset):
 
         # Check if the data is already cached
         if os.path.exists(cache_path):
-            logging.info(f"Loading cached data from {cache_path}")
+            # logging.info(f"Loading cached data from {cache_path}")
             point_cloud, pressures = self._load_from_cache(cache_path)
         else:
             if self.preprocess:
