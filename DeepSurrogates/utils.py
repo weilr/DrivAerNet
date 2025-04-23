@@ -7,6 +7,10 @@ import torch
 from tqdm import tqdm
 
 
+import logging
+import os
+import sys
+
 def init_logger(log_name: str, log_file=None, level=logging.INFO):
     """
     Set up the logger for the application.
@@ -15,7 +19,8 @@ def init_logger(log_name: str, log_file=None, level=logging.INFO):
         log_file: Path to the log file
         level: Logging level
     """
-    if not os.path.exists(log_file):
+    # Check if the log file directory exists, create it if not
+    if log_file and not os.path.exists(log_file):
         os.makedirs(log_file)
 
     # Create logger
@@ -35,12 +40,18 @@ def init_logger(log_name: str, log_file=None, level=logging.INFO):
     if log_file:
         # Create file handler if log_file is provided
         log_path = os.path.join(log_file, log_name)
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)  # Ensure the log file's directory exists
         file_handler = logging.FileHandler(log_path, encoding='utf-8')
         file_handler.setLevel(level)
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         logger.addHandler(file_handler)
-        logging.info(f"[Logger] Initialization completed：{log_path}")
+
+        # Confirm that the logger is initialized and the file handler is working
+        logging.info(f"[Logger] Initialization completed: {log_path}")
+        logging.debug(f"Logger is set to {level} level")  # Debugging statement
+
+    return logger
+
 
 
 def log_tqdm(iterable, desc=None):

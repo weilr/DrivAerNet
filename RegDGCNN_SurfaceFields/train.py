@@ -225,6 +225,10 @@ def train_and_evaluate(rank, world_size, args):
     if local_rank == 0:
         global writer
         logging.info(f"Starting training with {world_size} GPUs")
+
+        sys.stdout.reconfigure(line_buffering=True)
+        init_logger(log_file=os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}'), log_name=f'training.log')
+        logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
         # print(f"Starting training with {world_size} GPUs")
         if writer is None:
             logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
@@ -360,9 +364,6 @@ def init(args):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     args.exp_name = gen_model_name(args, timestamp)
 
-    sys.stdout.reconfigure(line_buffering=True)
-    init_logger(log_file=os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}'), log_name=f'training.log')
-    logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
     logging.info("[Config] Training configuration:")
     for arg, value in vars(args).items():
         logging.info(f"{arg:<20}: {value}")
