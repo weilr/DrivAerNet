@@ -220,6 +220,11 @@ def train_and_evaluate(rank, world_size, args):
     local_rank = rank
     torch.cuda.set_device(local_rank)
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format=f'[Rank {rank}] %(asctime)s - %(levelname)s - %(message)s',
+        handlers=[logging.StreamHandler()]
+    )
     # Set up logging (only on rank 0)
     if local_rank == 0:
         global writer
@@ -319,8 +324,6 @@ def train_and_evaluate(rank, world_size, args):
             if early_stopping.early_stop:
                 logging.info("Early stopping in epoch {}".format(epoch))
                 break
-            training_duration = time.time() - training_start_time
-            logging.info(f"Total training time: {training_duration:.2f}s")
             # Save progress plot
             # if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
             #     plt.figure(figsize=(10, 5))
@@ -335,12 +338,18 @@ def train_and_evaluate(rank, world_size, args):
 
     # Save final model
     if local_rank == 0:
+        training_duration = time.time() - training_start_time
+        logging.info(f"Total training time: {training_duration:.2f}s")
+
         torch.save(model.state_dict(), final_model_path)
         logging.info(f"Final model saved to {final_model_path}")
         # print(f"Final model saved to {final_model_path}")
 
     # Make sure all processes sync up before testing
+    logging.info(f"[Rank {rank}] Reaching dist.barrier() ...")
     dist.barrier()
+    logging.info(f"[Rank {rank}] Passed dist.barrier()")
+
     test_metrics_path = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}')
     # Test the final model
     if local_rank == 0:
