@@ -49,6 +49,7 @@ def parse_args():
     parser.add_argument('--dataset_path', type=str, required=True, help='Path to dataset')
     parser.add_argument('--subset_dir', type=str, required=True, help='Path to train/val/test splits')
     parser.add_argument('--cache_dir', type=str, help='Path to cache directory')
+    parser.add_argument('--model_path', type=str, help='Path to test model directory')
     parser.add_argument('--num_points', type=int, default=10000, help='Number of points to sample')
 
     # Training settings
@@ -83,6 +84,7 @@ def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, e
     """Train for one epoch."""
     model.train()
     total_loss = 0
+    num_batches = len(train_dataloader)
 
     for data, targets in progress(train_dataloader, desc=f"Epoch {epoch + 1} [Training]"):
         data, targets = data.squeeze(1).to(local_rank), targets.squeeze(1).to(local_rank)
@@ -96,13 +98,18 @@ def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, e
         optimizer.step()
         total_loss += loss.item()
 
-    return total_loss / len(train_dataloader)
+    total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
+    dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM)
+    avg_loss = total_loss_tensor.item() / dist.get_world_size()
+
+    return avg_loss
 
 
 def validate(model, val_dataloader, criterion, local_rank, epoch):
     """Validate the model."""
     model.eval()
     total_loss = 0
+    num_batches = len(val_dataloader)
 
     with torch.no_grad():
         for data, targets in progress(val_dataloader, desc=f"Epoch {epoch + 1} [Validation]"):
@@ -113,7 +120,11 @@ def validate(model, val_dataloader, criterion, local_rank, epoch):
             loss = criterion(outputs.squeeze(1), targets)
             total_loss += loss.item()
 
-    return total_loss / len(val_dataloader)
+        total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
+        dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM)
+        avg_loss = total_loss_tensor.item() / dist.get_world_size()
+
+        return avg_loss
 
 
 def test_model(model, test_dataloader, criterion, local_rank, exp_dir):
@@ -219,11 +230,12 @@ def train_and_evaluate(rank, world_size, args):
 
     local_rank = rank
     torch.cuda.set_device(local_rank)
-
     logging.basicConfig(
         level=logging.INFO,
         format=f'[Rank {rank}] %(asctime)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler()]
+        handlers=[logging.FileHandler(
+            os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}', f'[{rank}]training.log'), ),
+            logging.StreamHandler()]
     )
     # Set up logging (only on rank 0)
     if local_rank == 0:
@@ -275,7 +287,7 @@ def train_and_evaluate(rank, world_size, args):
                                     f'{args.exp_name}_final_model.pth')
 
     # Check if test_only and model exists
-    if args.test_only and os.path.exists(best_model_path):
+    if args.test_only and os.path.exists(args.model_path):
         if local_rank == 0:
             logging.info("Loading best model for testing only")
             print("Testing the best model:")
@@ -312,18 +324,27 @@ def train_and_evaluate(rank, world_size, args):
             # print(f"Epoch {epoch + 1}/{args.epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
 
             writer.add_scalars("RegDGCNN_Loss", {'train': train_loss, 'test': val_loss}, epoch + 1)
-            # Save the best model
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                torch.save(model.state_dict(), best_model_path)
-                logging.info(f"New best model saved with Val Loss: {best_val_loss:.6f}")
+            # # Save the best model
+            # if val_loss < best_val_loss:
+            #     best_val_loss = val_loss
+            #     torch.save(model.state_dict(), best_model_path)
+            #     logging.info(f"New best model saved with Val Loss: {best_val_loss:.6f}")
 
-            # Update learning rate scheduler
             scheduler.step(val_loss)
             early_stopping(val_loss, model, best_model_path)
-            if early_stopping.early_stop:
-                logging.info("Early stopping in epoch {}".format(epoch))
-                break
+        else:
+            scheduler.step(val_loss)
+
+        early_stop_tensor = torch.tensor(early_stopping.early_stop if local_rank == 0 else False, dtype=torch.bool).to(
+            local_rank)
+        dist.broadcast(early_stop_tensor, src=0)  # 从 rank0 广播到所有进程
+        early_stop = early_stop_tensor.item()
+
+        if early_stop:
+            logging.info(f"[Rank {local_rank}][Epoch{epoch}] Early stopping triggered, exiting training loop")
+            if local_rank == 0:
+                logging.info(f"Early stopping triggered in epoch {epoch + 1}")
+            break
             # Save progress plot
             # if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
             #     plt.figure(figsize=(10, 5))
@@ -375,6 +396,7 @@ def init(args):
     logging.info("[Config] Training configuration:")
     for arg, value in vars(args).items():
         logging.info(f"{arg:<20}: {value}")
+
 
 def main():
     """Main function to parse arguments and start training."""
