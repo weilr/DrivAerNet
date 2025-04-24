@@ -84,7 +84,6 @@ def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, e
     """Train for one epoch."""
     model.train()
     total_loss = 0
-    num_batches = len(train_dataloader)
 
     for data, targets in progress(train_dataloader, desc=f"Epoch {epoch + 1} [Training]"):
         data, targets = data.squeeze(1).to(local_rank), targets.squeeze(1).to(local_rank)
@@ -98,15 +97,32 @@ def train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, e
         optimizer.step()
         total_loss += loss.item()
 
-    total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
-    dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM)
-    avg_loss = total_loss_tensor.item() / dist.get_world_size()
+    return total_loss / len(train_dataloader)
 
-    return avg_loss
 
+# def validate(model, val_dataloader, criterion, local_rank, epoch):
+#     """Validate the model and measure all_reduce overhead."""
+#     model.eval()
+#     total_loss = 0
+#     num_batches = len(val_dataloader)
+#
+#     with torch.no_grad():
+#         for data, targets in progress(val_dataloader, desc=f"Epoch {epoch + 1} [Validation]"):
+#             data, targets = data.squeeze(1).to(local_rank), targets.squeeze(1).to(local_rank)
+#             targets = (targets - PRESSURE_MEAN) / PRESSURE_STD
+#
+#             outputs = model(data)
+#             loss = criterion(outputs.squeeze(1), targets)
+#             total_loss += loss.item()
+#
+#         total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
+#         dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM)
+#         avg_loss = total_loss_tensor.item() / dist.get_world_size()
+#
+#         return avg_loss
 
 def validate(model, val_dataloader, criterion, local_rank, epoch):
-    """Validate the model."""
+    """Validate the model and measure all_reduce overhead."""
     model.eval()
     total_loss = 0
     num_batches = len(val_dataloader)
@@ -120,12 +136,16 @@ def validate(model, val_dataloader, criterion, local_rank, epoch):
             loss = criterion(outputs.squeeze(1), targets)
             total_loss += loss.item()
 
-        total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
-        dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM)
-        avg_loss = total_loss_tensor.item() / dist.get_world_size()
+    # 测量 all_reduce 开销
+    start_time = time.time()
+    total_loss_tensor = torch.tensor(total_loss / num_batches).to(local_rank)
+    handle = dist.all_reduce(total_loss_tensor, op=dist.ReduceOp.SUM, async_op=True)
+    handle.wait()
+    all_reduce_time = time.time() - start_time
+    logging.info(f"[Rank {local_rank}] Epoch {epoch + 1} all_reduce time: {all_reduce_time:.6f}s")
 
-        return avg_loss
-
+    avg_loss = total_loss_tensor.item() / dist.get_world_size()
+    return avg_loss, all_reduce_time  # 返回损失和通信开销
 
 def test_model(model, test_dataloader, criterion, local_rank, exp_dir):
     """Test the model and calculate metrics."""
@@ -222,7 +242,7 @@ def test_model(model, test_dataloader, criterion, local_rank, exp_dir):
 
 
 def train_and_evaluate(rank, world_size, args):
-    """Main function for distributed training and evaluation."""
+    """Main function for distributed training and evaluation with communication overhead tracking."""
     setup_seed(args.seed)
 
     # Initialize process group for DDP  gloo/nccl
@@ -233,19 +253,18 @@ def train_and_evaluate(rank, world_size, args):
     logging.basicConfig(
         level=logging.INFO,
         format=f'[Rank {rank}] %(asctime)s - %(levelname)s - %(message)s',
-        handlers=[logging.FileHandler(
-            os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}', f'[{rank}]training.log'), ),
-            logging.StreamHandler()]
+        handlers=[
+            logging.FileHandler(os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}', f'[{rank}]training.log')),
+            logging.StreamHandler()
+        ]
     )
     # Set up logging (only on rank 0)
     if local_rank == 0:
         global writer
         logging.info(f"Starting training with {world_size} GPUs")
-
         sys.stdout.reconfigure(line_buffering=True)
         init_logger(log_file=os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}'), log_name=f'training.log')
         logging.info(f"[Main] Initializing at the {proj_path} path in the {platform.system()} system.")
-        # print(f"Starting training with {world_size} GPUs")
         if writer is None:
             logdir = os.path.join(proj_path, 'runs', f'{args.exp_name}')
             logging.info(f"[Main] Initializing TensorBoard at {logdir}")
@@ -257,7 +276,6 @@ def train_and_evaluate(rank, world_size, args):
     if local_rank == 0:
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logging.info(f"Total trainable parameters: {total_params}")
-        # print(f"Total trainable parameters: {total_params}")
 
     # Prepare DataLoaders
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(
@@ -270,8 +288,6 @@ def train_and_evaluate(rank, world_size, args):
     if local_rank == 0:
         logging.info(
             f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
-        # print(
-        #     f"Data loaded: {len(train_dataloader)} training batches, {len(val_dataloader)} validation batches, {len(test_dataloader)} test batches")
 
     training_start_time = time.time()
 
@@ -300,10 +316,11 @@ def train_and_evaluate(rank, world_size, args):
     best_val_loss = float('inf')
     train_losses = []
     val_losses = []
+    total_all_reduce_time = 0.0
+    total_broadcast_time = 0.0
 
     if local_rank == 0:
         logging.info(f"Starting training for {args.epochs} epochs")
-        # print(f"Starting training for {args.epochs} epochs")
 
     # Training loop
     for epoch in range(args.epochs):
@@ -314,57 +331,58 @@ def train_and_evaluate(rank, world_size, args):
         train_loss = train_one_epoch(model, train_dataloader, optimizer, criterion, local_rank, epoch)
 
         # Validation
-        val_loss = validate(model, val_dataloader, criterion, local_rank, epoch)
+        val_loss, all_reduce_time = validate(model, val_dataloader, criterion, local_rank, epoch)
+        total_all_reduce_time += all_reduce_time
 
         # Record losses
         if local_rank == 0:
             train_losses.append(train_loss)
             val_losses.append(val_loss)
             logging.info(f"[Epoch {epoch + 1}/{args.epochs}] - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
-            # print(f"Epoch {epoch + 1}/{args.epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
-
             writer.add_scalars("RegDGCNN_Loss", {'train': train_loss, 'test': val_loss}, epoch + 1)
-            # # Save the best model
-            # if val_loss < best_val_loss:
-            #     best_val_loss = val_loss
-            #     torch.save(model.state_dict(), best_model_path)
-            #     logging.info(f"New best model saved with Val Loss: {best_val_loss:.6f}")
 
             scheduler.step(val_loss)
             early_stopping(val_loss, model, best_model_path)
         else:
             scheduler.step(val_loss)
 
-        early_stop_tensor = torch.tensor(early_stopping.early_stop if local_rank == 0 else False, dtype=torch.bool).to(
-            local_rank)
-        dist.broadcast(early_stop_tensor, src=0)  # 从 rank0 广播到所有进程
-        early_stop = early_stop_tensor.item()
+        # 测量 broadcast 开销
+        start_time = time.time()
+        early_stop_tensor = torch.tensor(early_stopping.early_stop if local_rank == 0 else False, dtype=torch.bool).to(local_rank)
+        dist.broadcast(early_stop_tensor, src=0)
+        broadcast_time = time.time() - start_time
+        total_broadcast_time += broadcast_time
+        logging.info(f"[Rank {local_rank}] Epoch {epoch + 1} broadcast time: {broadcast_time:.6f}s")
 
+        early_stop = early_stop_tensor.item()
         if early_stop:
-            logging.info(f"[Rank {local_rank}][Epoch{epoch}] Early stopping triggered, exiting training loop")
+            logging.info(f"[Rank {local_rank}][Epoch {epoch + 1}] Early stopping triggered, exiting training loop")
             if local_rank == 0:
                 logging.info(f"Early stopping triggered in epoch {epoch + 1}")
             break
-            # Save progress plot
-            # if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
-            #     plt.figure(figsize=(10, 5))
-            #     plt.plot(range(1, epoch + 2), train_losses, label='Training Loss')
-            #     plt.plot(range(1, epoch + 2), val_losses, label='Validation Loss')
-            #     plt.xlabel('Epoch')
-            #     plt.ylabel('Loss')
-            #     plt.legend()
-            #     plt.title(f'Training Progress - RegDGCNN')
-            #     plt.savefig(os.path.join('experiments', args.exp_name, 'training_progress.png'))
-            #     plt.close()
+
+    # Log total communication overhead
+    logging.info(f"[Rank {local_rank}] Total all_reduce time: {total_all_reduce_time:.6f}s")
+    logging.info(f"[Rank {local_rank}] Total broadcast time: {total_broadcast_time:.6f}s")
+
+    # Aggregate communication overhead across processes (optional)
+    all_reduce_time_tensor = torch.tensor(total_all_reduce_time).to(local_rank)
+    broadcast_time_tensor = torch.tensor(total_broadcast_time).to(local_rank)
+    dist.reduce(all_reduce_time_tensor, dst=0, op=dist.ReduceOp.SUM)
+    dist.reduce(broadcast_time_tensor, dst=0, op=dist.ReduceOp.SUM)
+    if local_rank == 0:
+        avg_all_reduce_time = all_reduce_time_tensor.item() / world_size
+        avg_broadcast_time = broadcast_time_tensor.item() / world_size
+        logging.info(f"Average all_reduce time across {world_size} processes: {avg_all_reduce_time:.6f}s")
+        logging.info(f"Average broadcast time across {world_size} processes: {avg_broadcast_time:.6f}s")
 
     # Save final model
     if local_rank == 0:
         training_duration = time.time() - training_start_time
         logging.info(f"Total training time: {training_duration:.2f}s")
-
+        logging.info(f"Communication overhead ratio: {(total_all_reduce_time + total_broadcast_time) / training_duration * 100:.2f}%")
         torch.save(model.state_dict(), final_model_path)
         logging.info(f"Final model saved to {final_model_path}")
-        # print(f"Final model saved to {final_model_path}")
 
     # Make sure all processes sync up before testing
     logging.info(f"[Rank {rank}] Reaching dist.barrier() ...")
@@ -372,20 +390,15 @@ def train_and_evaluate(rank, world_size, args):
     logging.info(f"[Rank {rank}] Passed dist.barrier()")
 
     test_metrics_path = os.path.join(proj_path, 'logs/PressurePred', f'{args.exp_name}')
-    # Test the final model
     if local_rank == 0:
         logging.info("Testing the final model")
-        # print("Testing the final model:")
     test_model(model, test_dataloader, criterion, local_rank, test_metrics_path)
 
-    # Test the best model
     if local_rank == 0:
         logging.info("Testing the best model")
-        # print("Testing the best model:")
     model.load_state_dict(torch.load(best_model_path, map_location=f'cuda:{local_rank}'))
     test_model(model, test_dataloader, criterion, local_rank, test_metrics_path)
 
-    # Clean up
     dist.destroy_process_group()
 
 
